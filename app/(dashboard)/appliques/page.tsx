@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check,
-  Sparkles, Package, ChevronDown, ChevronUp, Gem,
+  Sparkles, Package, ChevronDown, ChevronUp, Gem, Search, Filter, Hammer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -445,6 +445,311 @@ function AppliqueCard({ applique, usages, onEdit, onDelete, index }: {
   );
 }
 
+// ── Shared input style (same as gems page) ────────────────────────────────────
+const inputSt: React.CSSProperties = {
+  width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.875rem",
+  border: "1.5px solid #E5E7EB", borderRadius: "0.625rem",
+  background: "#FFFFFF", color: "#1E2029", outline: "none",
+};
+
+const CATEGORY_LABELS_MAP: Record<string, string> = {
+  all: "All",
+  rhinestone: "Rhinestone", gem: "Gem / Stone", trim: "Trim",
+  fabric: "Fabric", feather: "Feather", frame: "Frame", wire: "Wire",
+  glue: "Glue", tool: "Tool", hardware: "Hardware", paint: "Paint", other: "Other",
+};
+
+// ── Visual Applique Builder ───────────────────────────────────────────────────
+function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }: {
+  open: boolean; onClose: () => void; onSaved: () => void;
+  gemSupplies: GemSupply[]; applique?: Applique;
+}) {
+  const isEdit = !!applique;
+  const [name, setName] = useState(applique?.name ?? "");
+  const [notes, setNotes] = useState(applique?.notes ?? "");
+  const [photoURL, setPhotoURL] = useState<string | undefined>(applique?.photoURL);
+  const [ingredients, setIngredients] = useState<AppliqueIngredient[]>(applique?.ingredients ?? []);
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
+  const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const photoRef = useRef<HTMLInputElement>(null);
+  const tempId = useRef(`temp_${Date.now()}`);
+
+  const totalCost = ingredients.reduce((s, i) => s + i.lineCost, 0);
+
+  useEffect(() => {
+    if (!open) return;
+    setName(applique?.name ?? ""); setNotes(applique?.notes ?? "");
+    setPhotoURL(applique?.photoURL); setIngredients(applique?.ingredients ?? []);
+    setSearch(""); setCatFilter("all"); setError("");
+  }, [open, applique]);
+
+  const filteredGems = gemSupplies.filter(g => {
+    const matchCat = catFilter === "all" || g.category === catFilter;
+    const q = search.toLowerCase();
+    const matchSearch = !q || g.name.toLowerCase().includes(q) || g.itemNumber.toLowerCase().includes(q) ||
+      g.availableColours?.some(c => c.toLowerCase().includes(q));
+    return matchCat && matchSearch;
+  });
+
+  function toggleGem(gem: GemSupply) {
+    const existing = ingredients.find(i => i.gemSupplyId === gem.id);
+    if (existing) {
+      setIngredients(prev => prev.filter(i => i.gemSupplyId !== gem.id));
+    } else {
+      setIngredients(prev => [...prev, {
+        gemSupplyId: gem.id,
+        gemSupplyName: gem.name + (gem.availableColours?.length ? ` (${gem.availableColours[0]})` : ""),
+        quantity: 1,
+        unitCost: gem.unitCost,
+        lineCost: +(gem.unitCost * 1).toFixed(4),
+      }]);
+    }
+  }
+
+  function updateQty(gemId: string, qty: number) {
+    const q = Math.max(0.001, qty);
+    setIngredients(prev => prev.map(i =>
+      i.gemSupplyId === gemId ? { ...i, quantity: q, lineCost: +(i.unitCost * q).toFixed(4) } : i
+    ));
+  }
+
+  async function handlePhoto(file: File) {
+    if (file.size > 5 * 1024 * 1024) { setError("Photo must be under 5 MB"); return; }
+    setUploading(true); setUploadPct(0);
+    try {
+      const id = applique?.id ?? tempId.current;
+      const ext = file.name.split(".").pop() ?? "jpg";
+      setPhotoURL(await uploadFile(`appliques/${id}/photo.${ext}`, file, setUploadPct));
+    } catch { setError("Upload failed."); }
+    finally { setUploading(false); }
+  }
+
+  async function handleSave() {
+    if (!name.trim()) { setError("Applique name is required"); return; }
+    setSaving(true); setError("");
+    try {
+      const payload = { name: name.trim(), notes: notes || undefined, photoURL, ingredients, totalCost };
+      if (isEdit && applique) await updateApplique(applique.id, payload);
+      else await createApplique(payload);
+      onSaved(); onClose();
+    } catch { setError("Failed to save."); }
+    finally { setSaving(false); }
+  }
+
+  const categories = ["all", ...Array.from(new Set(gemSupplies.map(g => g.category)))];
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      {/* Wide dialog override */}
+      <DialogContent style={{ maxWidth: "64rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden" }}>
+        {/* Header bar */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "1rem 1.25rem", borderBottom: "1px solid #F3F4F6" }}>
+          <div style={{ width: "2rem", height: "2rem", borderRadius: "0.5rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Hammer style={{ width: "1rem", height: "1rem", color: isEdit ? "#1A73E8" : "#FF006E" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>
+              {isEdit ? `Edit — ${applique?.itemNumber}` : "Build an Applique"}
+            </h2>
+            <p style={{ fontSize: "0.75rem", color: "#9CA3AF", margin: 0 }}>
+              Pick gems, set quantities — cost calculates automatically
+            </p>
+          </div>
+          {error && <p style={{ fontSize: "0.78rem", color: "#DC2626" }}>{error}</p>}
+        </div>
+
+        {/* Two-panel body */}
+        <div style={{ display: "flex", height: "70vh", minHeight: "500px" }}>
+
+          {/* LEFT — Gem picker */}
+          <div style={{ flex: "1 1 0", display: "flex", flexDirection: "column", borderRight: "1px solid #F3F4F6", minWidth: 0 }}>
+            {/* Search + filter */}
+            <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              <div style={{ position: "relative" }}>
+                <Search style={{ position: "absolute", left: "0.6rem", top: "50%", transform: "translateY(-50%)", width: "0.9rem", height: "0.9rem", color: "#9CA3AF" }} />
+                <input
+                  placeholder="Search gems by name, code, colour…"
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  style={{ ...inputSt, paddingLeft: "2rem", fontSize: "0.8rem" }}
+                />
+              </div>
+              <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                {categories.map(cat => (
+                  <button key={cat} type="button" onClick={() => setCatFilter(cat)}
+                    style={{
+                      fontSize: "0.7rem", fontWeight: catFilter === cat ? 700 : 500,
+                      padding: "0.2rem 0.6rem", borderRadius: "999px", cursor: "pointer",
+                      border: `1.5px solid ${catFilter === cat ? "#1A73E8" : "#E5E7EB"}`,
+                      background: catFilter === cat ? "#1A73E8" : "#FFFFFF",
+                      color: catFilter === cat ? "#FFFFFF" : "#6B7280",
+                    }}>
+                    {CATEGORY_LABELS_MAP[cat] ?? cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Gem grid */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.5rem", alignContent: "start" }}>
+              {filteredGems.length === 0 && (
+                <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "3rem", color: "#9CA3AF" }}>
+                  <Gem style={{ width: "2rem", height: "2rem", margin: "0 auto 0.5rem" }} />
+                  <p style={{ fontSize: "0.85rem" }}>No gems match your search</p>
+                </div>
+              )}
+              {filteredGems.map(gem => {
+                const added = ingredients.some(i => i.gemSupplyId === gem.id);
+                return (
+                  <button key={gem.id} type="button" onClick={() => toggleGem(gem)}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: "0.4rem",
+                      padding: "0.6rem 0.5rem", borderRadius: "0.75rem", cursor: "pointer", textAlign: "center",
+                      border: `2px solid ${added ? "#1A73E8" : "#E5E7EB"}`,
+                      background: added ? "rgba(26,115,232,0.06)" : "#FFFFFF",
+                      position: "relative", transition: "all 0.12s",
+                    }}>
+                    {added && (
+                      <div style={{ position: "absolute", top: "0.3rem", right: "0.3rem", width: "1.1rem", height: "1.1rem", borderRadius: "50%", background: "#1A73E8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <Check style={{ width: "0.65rem", height: "0.65rem", color: "#fff" }} />
+                      </div>
+                    )}
+                    {/* Photo or placeholder */}
+                    <div style={{ width: "3.5rem", height: "3.5rem", borderRadius: "0.5rem", background: "#F3F4F6", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {gem.photoURL
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={gem.photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <Gem style={{ width: "1.25rem", height: "1.25rem", color: "#D1D5DB" }} />
+                      }
+                    </div>
+                    <div>
+                      <p style={{ fontSize: "0.68rem", fontWeight: 600, color: "#1E2029", lineHeight: 1.2, margin: 0 }}>{gem.name}</p>
+                      <p style={{ fontSize: "0.62rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>{gem.itemNumber}</p>
+                      <p style={{ fontSize: "0.68rem", fontWeight: 700, color: "#1A73E8", margin: "0.15rem 0 0" }}>${gem.unitCost}/{gem.unit}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ padding: "0.5rem 1rem", borderTop: "1px solid #F3F4F6", fontSize: "0.72rem", color: "#9CA3AF" }}>
+              {filteredGems.length} gem{filteredGems.length !== 1 ? "s" : ""} shown · {ingredients.length} selected
+            </div>
+          </div>
+
+          {/* RIGHT — Builder */}
+          <div style={{ width: "20rem", flexShrink: 0, display: "flex", flexDirection: "column", background: "#FAFAFA" }}>
+            {/* Applique details */}
+            <div style={{ padding: "1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.3rem" }}>Applique Name *</label>
+                <input style={inputSt} placeholder="e.g. Gold Star Cluster" value={name} onChange={e => setName(e.target.value)} />
+              </div>
+              {/* Photo */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div
+                  style={{
+                    width: "3.5rem", height: "3.5rem", borderRadius: "0.5rem", flexShrink: 0,
+                    border: "2px dashed #E5E7EB", background: "#F9FAFB",
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                    overflow: "hidden",
+                  }}
+                  onClick={() => photoRef.current?.click()}>
+                  {uploading
+                    ? <Loader2 style={{ width: "1rem", height: "1rem", color: "#1A73E8" }} className="animate-spin" />
+                    : photoURL
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <ImageIcon style={{ width: "1.1rem", height: "1.1rem", color: "#9CA3AF" }} />
+                  }
+                </div>
+                <div>
+                  <button type="button" onClick={() => photoRef.current?.click()}
+                    style={{ fontSize: "0.75rem", fontWeight: 600, color: "#1A73E8", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    {photoURL ? "Change photo" : "Upload photo"}
+                  </button>
+                  <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>JPG, PNG up to 5MB</p>
+                </div>
+                <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); e.target.value = ""; }} />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.3rem" }}>Notes</label>
+                <input style={{ ...inputSt, fontSize: "0.8rem" }} placeholder="Optional notes" value={notes} onChange={e => setNotes(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Selected gems list */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+              {ingredients.length === 0 ? (
+                <div style={{ textAlign: "center", paddingTop: "2rem", color: "#9CA3AF" }}>
+                  <Sparkles style={{ width: "1.5rem", height: "1.5rem", margin: "0 auto 0.4rem" }} />
+                  <p style={{ fontSize: "0.8rem" }}>Click gems on the left to add them</p>
+                </div>
+              ) : (
+                ingredients.map(ing => (
+                  <div key={ing.gemSupplyId}
+                    style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "0.6rem" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#1E2029", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ing.gemSupplyName}</p>
+                      <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: 0 }}>${ing.unitCost}/ea</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                      <button type="button" onClick={() => updateQty(ing.gemSupplyId, ing.quantity - 1)}
+                        style={{ width: "1.4rem", height: "1.4rem", borderRadius: "0.35rem", border: "1.5px solid #E5E7EB", background: "#F3F4F6", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", color: "#374151" }}>−</button>
+                      <input type="number" min="0.001" step="1" value={ing.quantity}
+                        onChange={e => updateQty(ing.gemSupplyId, parseFloat(e.target.value) || 1)}
+                        style={{ width: "2.5rem", textAlign: "center", fontSize: "0.78rem", fontWeight: 700, border: "1.5px solid #E5E7EB", borderRadius: "0.35rem", padding: "0.15rem 0.25rem", color: "#1E2029", outline: "none" }} />
+                      <button type="button" onClick={() => updateQty(ing.gemSupplyId, ing.quantity + 1)}
+                        style={{ width: "1.4rem", height: "1.4rem", borderRadius: "0.35rem", border: "1.5px solid #E5E7EB", background: "#F3F4F6", cursor: "pointer", fontSize: "0.9rem", display: "flex", alignItems: "center", justifyContent: "center", color: "#374151" }}>+</button>
+                    </div>
+                    <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "#FF006E", width: "2.5rem", textAlign: "right", flexShrink: 0, margin: 0 }}>${ing.lineCost.toFixed(2)}</p>
+                    <button type="button" onClick={() => toggleGem({ id: ing.gemSupplyId } as GemSupply)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.1rem", display: "flex" }}>
+                      <X style={{ width: "0.9rem", height: "0.9rem" }} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Total + save */}
+            <div style={{ padding: "0.875rem 1rem", borderTop: "1px solid #E5E7EB", background: "#FFFFFF" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+                <div>
+                  <p style={{ fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", margin: 0 }}>Cost per Applique</p>
+                  <p style={{ fontSize: "1.5rem", fontWeight: 800, color: ingredients.length > 0 ? "#FF006E" : "#D1D5DB", margin: 0, lineHeight: 1 }}>
+                    ${totalCost.toFixed(2)}
+                  </p>
+                  {ingredients.length > 0 && (
+                    <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>
+                      {ingredients.length} gem{ingredients.length !== 1 ? "s" : ""} · {ingredients.reduce((s, i) => s + i.quantity, 0)} pieces total
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button type="button" onClick={onClose}
+                  style={{ flex: 1, padding: "0.6rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+                  Cancel
+                </button>
+                <button type="button" onClick={handleSave} disabled={saving || uploading || !name.trim()}
+                  style={{ flex: 2, padding: "0.6rem", borderRadius: "0.75rem", border: "none", background: name.trim() ? (isEdit ? "#1A73E8" : "#FF006E") : "#E5E7EB", color: name.trim() ? "#FFFFFF" : "#9CA3AF", fontWeight: 700, fontSize: "0.875rem", cursor: name.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+                  {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />}
+                  {isEdit ? "Save Changes" : "Save Applique"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AppliquesPage() {
   const [appliques, setAppliques] = useState<Applique[]>([]);
@@ -453,6 +758,8 @@ export default function AppliquesPage() {
   const [gemSupplies, setGemSupplies] = useState<GemSupply[]>([]);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderEdit, setBuilderEdit] = useState<Applique | undefined>();
   const [editApplique, setEditApplique] = useState<Applique | undefined>();
   const [deleteApplique_, setDeleteApplique] = useState<Applique | undefined>();
   const [deleting, setDeleting] = useState(false);
@@ -471,16 +778,24 @@ export default function AppliquesPage() {
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="page-header">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem", marginBottom: "0.5rem" }}>
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Applique Library</h1>
-          <p className="mt-1" style={{ color: "rgba(180,200,240,0.6)" }}>
-            Build appliques from your gem & supply ingredients - cost rolls up automatically
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>Applique Library</h1>
+          <p style={{ color: "#6B7280", marginTop: "0.25rem", fontSize: "0.9rem" }}>
+            Build appliques from your gem & supply ingredients — cost calculates automatically
           </p>
         </div>
-        <Button className="gold-btn" onClick={() => setAddOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> New Applique
-        </Button>
+        <div style={{ display: "flex", gap: "0.6rem" }}>
+          <button onClick={() => setAddOpen(true)}
+            style={{ padding: "0.55rem 1rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            <Plus style={{ width: "0.9rem", height: "0.9rem" }} /> Add Purchased
+          </button>
+          <button onClick={() => { setBuilderEdit(undefined); setBuilderOpen(true); }}
+            style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", boxShadow: "0 2px 8px rgba(255,0,110,0.3)" }}>
+            <Hammer style={{ width: "0.9rem", height: "0.9rem" }} /> Build Applique
+          </button>
+        </div>
       </motion.div>
 
       {/* Stats */}
@@ -504,15 +819,19 @@ export default function AppliquesPage() {
       {loading && <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 animate-spin text-carnival-pink" /></div>}
 
       {!loading && appliques.length === 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(255,107,157,0.07)", border: "1px solid rgba(255,107,157,0.15)" }}>
-            <Sparkles className="w-8 h-8 text-carnival-pink opacity-50" />
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "16rem", gap: "1rem", textAlign: "center" }}>
+          <div style={{ width: "4rem", height: "4rem", borderRadius: "50%", background: "rgba(255,0,110,0.07)", border: "1px solid rgba(255,0,110,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Sparkles style={{ width: "2rem", height: "2rem", color: "#FF006E", opacity: 0.6 }} />
           </div>
           <div>
-            <p className="text-foreground font-medium">No appliques yet</p>
-            <p className="text-sm mt-1" style={{ color: "#C084A0" }}>Add gems & supplies first, then build appliques from them</p>
+            <p style={{ fontWeight: 600, color: "#1E2029", margin: 0 }}>No appliques yet</p>
+            <p style={{ fontSize: "0.875rem", color: "#6B7280", margin: "0.25rem 0 0" }}>Add gems & supplies first, then use <strong>Build Applique</strong> to create your first one</p>
           </div>
-          <Button className="gold-btn" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-2" /> New Applique</Button>
+          <button onClick={() => setBuilderOpen(true)}
+            style={{ padding: "0.6rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <Hammer style={{ width: "0.9rem", height: "0.9rem" }} /> Build Applique
+          </button>
         </motion.div>
       )}
 
@@ -520,11 +839,14 @@ export default function AppliquesPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {appliques.map((a, i) => (
             <AppliqueCard key={a.id} applique={a} usages={usageMap[a.id] ?? []} index={i}
-              onEdit={() => setEditApplique(a)} onDelete={() => setDeleteApplique(a)} />
+              onEdit={() => { setBuilderEdit(a); setBuilderOpen(true); }} onDelete={() => setDeleteApplique(a)} />
           ))}
         </div>
       )}
 
+      {/* Visual builder — for building appliques from gems */}
+      <ApliqueBuilderDialog open={builderOpen} onClose={() => { setBuilderOpen(false); setBuilderEdit(undefined); }} onSaved={load} gemSupplies={gemSupplies} applique={builderEdit} />
+      {/* Simple form — for logging pre-purchased appliques */}
       <AppliqueFormDialog open={addOpen} onClose={() => setAddOpen(false)} onSaved={load} masterPieces={masterPieces} gemSupplies={gemSupplies} />
       <AppliqueFormDialog applique={editApplique} open={!!editApplique} onClose={() => setEditApplique(undefined)} onSaved={load} masterPieces={masterPieces} gemSupplies={gemSupplies} />
 

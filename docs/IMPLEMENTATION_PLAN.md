@@ -501,3 +501,92 @@ If time-constrained, build in this exact order:
 8. **Export functions** — PDF/Excel for external sharing
 
 This gives you a functional replacement for your Excel tracker in approximately **30-35 hours**.
+
+---
+
+## Phase 12: Applique Builder (Visual Cost Calculator)
+
+> **Priority: HIGH — build this next.**
+
+### What it is
+A visual drag-and-select interface for building appliques from individual gem supplies, with real-time cost rollup. Separate from the "Add Purchased Applique" flow.
+
+### Step 12.1: Applique Builder Dialog ✅ IN PROGRESS
+- Two-panel layout inside a wide dialog
+- **Left panel** — Gem picker:
+  - Search bar (filters by name / item number in real time)
+  - Category filter chips (Rhinestone, Gem/Stone, Trim, Feather, etc.)
+  - Scrollable grid of gem cards showing: photo, name, unit cost, category badge
+  - Clicking a card adds it to the applique (card highlights if already added)
+- **Right panel** — Applique builder:
+  - Applique name field
+  - Photo upload
+  - List of selected gems with inline quantity spinner
+  - Per-gem line cost (qty × unit cost)
+  - Running total cost at the bottom
+  - Save button → writes to Firestore as `Applique` doc with `ingredients[]`
+- **Two buttons on Appliques page:**
+  - "Build Applique" → opens the visual builder (new flow)
+  - "Add Purchased" → opens the simple form for pre-made appliques bought externally
+
+### Step 12.2: Applique Edit via Builder
+- Clicking Edit on an existing built applique opens the builder pre-populated
+- Can add/remove/adjust quantities and re-save
+
+### Step 12.3: Cost Summary View
+- On the applique card, show cost breakdown on hover/expand:
+  - Each ingredient: name × qty = line cost
+  - Total cost
+- On the Appliques list page, show:
+  - Total inventory value of all appliques if made once
+  - Which applique is most expensive
+
+---
+
+## Phase 13: Customer CRM + Email Broadcasts
+
+> **Priority: MEDIUM — build after applique builder.**
+
+### What it is
+A simple CRM storing masquerader/parent contact info, with the ability to send branded email blasts (season updates, payment reminders, pickup notices).
+
+### Step 13.1: Customer Data Model
+- Firestore `customers` collection:
+  - `name`, `email`, `phone`, `costumeType`, `registrationId` (link), `tags[]`, `notes`, `createdAt`
+- Service: `getCustomers()`, `createCustomer()`, `updateCustomer()`, `deleteCustomer()`
+
+### Step 13.2: Customers Page
+- `/customers` route in dashboard nav
+- List view: name, costume type, email, phone, tags
+- Search + filter by costume type / tag
+- Add / Edit / Delete customer
+- Import from existing registrations (one-click sync)
+
+### Step 13.3: Email with Resend
+- Sign up at resend.com (free: 3,000 emails/month)
+- Add `RESEND_API_KEY` to Vercel env vars
+- Install: `npm install resend`
+- API route: `POST /api/email/send`
+- Email templates in React Email matching app brand colors
+
+### Step 13.4: Email Broadcasts
+- "Send Update" button on Customers page
+- Select recipients: all, by costume type, by tag, or manual pick
+- Compose: subject + message body
+- Preview before sending
+- Templates: Season Update, Payment Reminder, Pickup Notice
+- Sent log: timestamp, recipients, subject
+
+---
+
+## Phase 14: Pending / Backlog Items
+
+- [ ] **Registrations page** — table is rendering without Tailwind grid styles, needs inline-style rewrite like dashboard
+- [ ] **Parent Shirts page** — same dark-theme void-* class cleanup
+- [ ] **Production page** — same cleanup
+- [ ] **Reports page** — same cleanup + add actual report generation (PDF/CSV)
+- [ ] **Pieces page** — same cleanup
+- [ ] **Settings page** — same cleanup
+- [ ] **Login page** — update to new bold color theme
+- [ ] **All dialogs in non-gems pages** — apply same dialog.tsx inline-style fix
+- [ ] **Mobile nav dot indicator** — `absolute` span inside Link needs `relative` on parent
