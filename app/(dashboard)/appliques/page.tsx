@@ -519,6 +519,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
   const [ingredients, setIngredients] = useState<AppliqueIngredient[]>([]);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
+  const [shapeFilter, setShapeFilter] = useState("all");
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -528,18 +529,20 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
 
   const totalCost = ingredients.reduce((s, i) => s + i.lineCost, 0);
   const categories = ["all", ...Array.from(new Set(gemSupplies.map(g => g.category)))];
+  const shapes = ["all", ...Array.from(new Set(gemSupplies.map(g => g.shape).filter(Boolean))) as string[]];
 
   useEffect(() => {
     if (!open) return;
     setName(applique?.name ?? ""); setNotes(applique?.notes ?? "");
     setPhotoURL(applique?.photoURL); setIngredients(applique?.ingredients ?? []);
-    setSearch(""); setCatFilter("all"); setError("");
+    setSearch(""); setCatFilter("all"); setShapeFilter("all"); setError("");
   }, [open, applique]);
 
   const filteredGems = gemSupplies.filter(g => {
     const matchCat = catFilter === "all" || g.category === catFilter;
+    const matchShape = shapeFilter === "all" || g.shape === shapeFilter;
     const q = search.toLowerCase();
-    return matchCat && (!q || g.name.toLowerCase().includes(q) || g.itemNumber.toLowerCase().includes(q) ||
+    return matchCat && matchShape && (!q || g.name.toLowerCase().includes(q) || g.itemNumber.toLowerCase().includes(q) ||
       g.availableColours?.some(c => c.toLowerCase().includes(q)));
   });
 
@@ -623,6 +626,17 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
                   </button>
                 ))}
               </div>
+              {shapes.length > 1 && (
+                <div style={{ display: "flex", gap: "0.35rem", flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: "0.62rem", fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.05em" }}>Shape:</span>
+                  {shapes.map(s => (
+                    <button key={s} type="button" onClick={() => setShapeFilter(s)}
+                      style={{ fontSize: "0.68rem", fontWeight: shapeFilter === s ? 700 : 500, padding: "0.15rem 0.5rem", borderRadius: "999px", cursor: "pointer", border: `1.5px solid ${shapeFilter === s ? "#FF006E" : "#E5E7EB"}`, background: shapeFilter === s ? "#FF006E" : "#FFFFFF", color: shapeFilter === s ? "#FFFFFF" : "#6B7280" }}>
+                      {s === "all" ? "Any" : s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "0.5rem", alignContent: "start" }}>

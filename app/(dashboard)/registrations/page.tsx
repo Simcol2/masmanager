@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { formatCurrency } from "@/lib/utils";
+import { COSTUME_PRICES, MODEL_DISCOUNT, ADD_ON_ITEMS } from "@/lib/pricing";
 import { CostumeTypeLabels, type PaymentStatus, type Registration, type CostumeType } from "@/types";
 import {
   getRegistrations, createRegistration, updateRegistration,
@@ -25,114 +26,107 @@ const inputStyle: React.CSSProperties = {
 };
 
 function PaymentBadge({ status }: { status: PaymentStatus }) {
-  if (status === "paid") return (
-    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D040" }}>Paid</span>
-  );
-  if (status === "partial") return (
-    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#FEF9C3", color: "#854D0E", border: "1px solid #FDE04740" }}>Partial</span>
-  );
-  return (
-    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA40" }}>Unpaid</span>
-  );
+  const cfg: Record<PaymentStatus, { bg: string; color: string; label: string }> = {
+    paid:    { bg: "#DCFCE7", color: "#166534", label: "Paid" },
+    partial: { bg: "#FEF9C3", color: "#854D0E", label: "Partial" },
+    deposit: { bg: "#EFF6FF", color: "#1D4ED8", label: "Deposit" },
+    unpaid:  { bg: "#FEE2E2", color: "#991B1B", label: "Unpaid" },
+  };
+  const s = cfg[status] ?? cfg.unpaid;
+  return <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: s.bg, color: s.color }}>{s.label}</span>;
 }
 
 // ── Registration form ─────────────────────────────────────────────────────────
 
-const EMPTY_FORM = {
-  firstName: "", lastName: "", age: "", gender: "" as "" | "boy" | "girl",
-  costumeType: "" as "" | CostumeType,
-  style: "", topSize: "", bottomSize: "", bandSize: "",
-  girlsTopSize: "", waist: "", shoeSize: "", shoeCategory: "", addOns: "",
-  parentName: "", parentEmail: "", parentPhone: "",
-  amountPaid: "0", totalCost: "0",
-  paymentStatus: "unpaid" as PaymentStatus,
-  notes: "",
-};
-
-function RegistrationForm({
-  initial, onClose, onSaved,
-}: {
-  initial?: Registration;
-  onClose: () => void;
-  onSaved: () => void;
+function RegistrationForm({ initial, onClose, onSaved }: {
+  initial?: Registration; onClose: () => void; onSaved: () => void;
 }) {
   const isEdit = !!initial;
-  const [form, setForm] = useState(() =>
-    initial
-      ? {
-          firstName: initial.firstName,
-          lastName: initial.lastName,
-          age: String(initial.age ?? ""),
-          gender: initial.gender,
-          costumeType: initial.costumeType,
-          style: initial.style ?? "",
-          topSize: initial.topSize ?? "",
-          bottomSize: initial.bottomSize ?? "",
-          bandSize: initial.bandSize ?? "",
-          girlsTopSize: initial.girlsTopSize ?? "",
-          waist: initial.waist ?? "",
-          shoeSize: initial.shoeSize ?? "",
-          shoeCategory: initial.shoeCategory ?? "",
-          addOns: initial.addOns ?? "",
-          parentName: initial.parentName,
-          parentEmail: initial.parentEmail ?? "",
-          parentPhone: initial.parentPhone ?? "",
-          amountPaid: String(initial.amountPaid ?? 0),
-          totalCost: String((initial.amountPaid ?? 0) + (initial.balanceOwing ?? 0)),
-          paymentStatus: initial.paymentStatus,
-          notes: initial.notes ?? "",
-        }
-      : EMPTY_FORM
-  );
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
-  const set = <K extends keyof typeof form>(k: K) => (v: (typeof form)[K]) =>
-    setForm(f => ({ ...f, [k]: v }));
+  // Participant info
+  const [firstName, setFirstName]     = useState(initial?.firstName ?? "");
+  const [lastName, setLastName]       = useState(initial?.lastName ?? "");
+  const [age, setAge]                 = useState(String(initial?.age ?? ""));
+  const [gender, setGender]           = useState<"" | "boy" | "girl">(initial?.gender ?? "");
+  const [costumeType, setCostumeType] = useState<"" | CostumeType>(initial?.costumeType ?? "");
+  const [style, setStyle]             = useState(initial?.style ?? "");
+  const [topSize, setTopSize]         = useState(initial?.topSize ?? "");
+  const [bottomSize, setBottomSize]   = useState(initial?.bottomSize ?? "");
+  const [bandSize, setBandSize]       = useState(initial?.bandSize ?? "");
+  const [girlsTopSize, setGirlsTopSize] = useState(initial?.girlsTopSize ?? "");
+  const [waist, setWaist]             = useState(initial?.waist ?? "");
+  const [shoeSize, setShoeSize]       = useState(initial?.shoeSize ?? "");
+  const [shoeCategory, setShoeCategory] = useState(initial?.shoeCategory ?? "");
+
+  // Parent info
+  const [parentName, setParentName]   = useState(initial?.parentName ?? "");
+  const [parentEmail, setParentEmail] = useState(initial?.parentEmail ?? "");
+  const [parentPhone, setParentPhone] = useState(initial?.parentPhone ?? "");
+
+  // Add-ons (structured)
+  const [selectedAddOns, setSelectedAddOns] = useState<string[]>(initial?.selectedAddOns ?? []);
+
+  // Model status
+  const [isModel, setIsModel]         = useState(initial?.isModel ?? false);
+
+  // Notes & payment
+  const [notes, setNotes]             = useState(initial?.notes ?? "");
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(initial?.paymentStatus ?? "unpaid");
+  const [amountPaidOverride, setAmountPaidOverride] = useState<string>("");
+
+  const [saving, setSaving]           = useState(false);
+  const [error, setError]             = useState("");
+
+  // ── Computed pricing ────────────────────────────────────────────────────────
+  const costumeBasePrice = costumeType ? (COSTUME_PRICES[costumeType] ?? 0) : 0;
+  const addOnTotal = selectedAddOns.reduce((s, key) => {
+    const item = ADD_ON_ITEMS.find(a => a.key === key);
+    return s + (item?.price ?? 0);
+  }, 0);
+  const modelDiscount = isModel ? MODEL_DISCOUNT : 0;
+  const totalCost = Math.max(0, costumeBasePrice + addOnTotal - modelDiscount);
+
+  // Amount paid — for deposit status auto-set to 50%, otherwise from override field
+  const amountPaid = paymentStatus === "deposit"
+    ? Math.round(totalCost * 0.5 * 100) / 100
+    : paymentStatus === "paid"
+      ? totalCost
+      : parseFloat(amountPaidOverride) || (initial?.amountPaid ?? 0);
+  const balanceOwing = Math.max(0, totalCost - amountPaid);
+
+  function toggleAddOn(key: string) {
+    setSelectedAddOns(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.firstName.trim() || !form.parentName.trim() || !form.costumeType || !form.gender) {
-      setError("First name, parent name, costume type, and gender are required");
-      return;
+    if (!firstName.trim() || !parentName.trim() || !costumeType || !gender) {
+      setError("First name, parent name, costume type, and gender are required"); return;
     }
-    setSaving(true);
-    setError("");
+    setSaving(true); setError("");
     try {
-      const paid = parseFloat(form.amountPaid) || 0;
-      const total = parseFloat(form.totalCost) || 0;
+      const addOnLabels = selectedAddOns.map(k => ADD_ON_ITEMS.find(a => a.key === k)?.label ?? k);
       const payload = {
         seasonId: "2026",
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        age: parseFloat(form.age) || 0,
-        gender: form.gender as "boy" | "girl",
-        costumeType: form.costumeType as CostumeType,
-        style: form.style || undefined,
-        topSize: form.topSize || undefined,
-        bottomSize: form.bottomSize || undefined,
-        bandSize: form.bandSize || undefined,
-        girlsTopSize: form.girlsTopSize || undefined,
-        waist: form.waist || undefined,
-        shoeSize: form.shoeSize || undefined,
-        shoeCategory: form.shoeCategory || undefined,
-        addOns: form.addOns || undefined,
-        parentName: form.parentName.trim(),
-        parentEmail: form.parentEmail || undefined,
-        parentPhone: form.parentPhone || undefined,
+        firstName: firstName.trim(), lastName: lastName.trim(),
+        age: parseFloat(age) || 0, gender: gender as "boy" | "girl",
+        costumeType: costumeType as CostumeType, style: style || undefined,
+        topSize: topSize || undefined, bottomSize: bottomSize || undefined,
+        bandSize: bandSize || undefined, girlsTopSize: girlsTopSize || undefined,
+        waist: waist || undefined, shoeSize: shoeSize || undefined,
+        shoeCategory: shoeCategory || undefined,
+        addOns: addOnLabels.length ? addOnLabels.join(", ") : undefined,
+        selectedAddOns, isModel,
+        costumeBasePrice, addOnTotal, modelDiscount, totalCost,
+        parentName: parentName.trim(), parentEmail: parentEmail || undefined,
+        parentPhone: parentPhone || undefined,
         registrationDate: initial?.registrationDate ?? new Date(),
-        paymentStatus: form.paymentStatus,
-        amountPaid: paid,
-        balanceOwing: Math.max(0, total - paid),
-        notes: form.notes || undefined,
+        paymentStatus, amountPaid, balanceOwing,
+        notes: notes || undefined,
       };
-      if (isEdit && initial) {
-        await updateRegistration(initial.id, payload);
-      } else {
-        await createRegistration(payload);
-      }
-      onSaved();
-      onClose();
+      if (isEdit && initial) await updateRegistration(initial.id, payload);
+      else await createRegistration(payload);
+      onSaved(); onClose();
     } catch { setError("Failed to save. Check your connection and try again."); }
     finally { setSaving(false); }
   }
@@ -144,83 +138,144 @@ function RegistrationForm({
     </div>
   );
 
+  const sec = (title: string) => (
+    <p style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", margin: "0.25rem 0 0.6rem" }}>{title}</p>
+  );
+
   return (
     <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
 
       {/* Participant */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-        {field("First Name *", <input style={inputStyle} value={form.firstName} onChange={e => set("firstName")(e.target.value)} placeholder="First name" />)}
-        {field("Last Name", <input style={inputStyle} value={form.lastName} onChange={e => set("lastName")(e.target.value)} placeholder="Last name" />)}
-        {field("Age", <input type="number" min="0" step="0.5" style={inputStyle} value={form.age} onChange={e => set("age")(e.target.value)} placeholder="e.g. 7" />)}
+      {sec("Participant")}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+        {field("First Name *", <input style={inputStyle} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" />)}
+        {field("Last Name",    <input style={inputStyle} value={lastName}  onChange={e => setLastName(e.target.value)}  placeholder="Last name" />)}
+        {field("Age",          <input type="number" min="0" step="0.5" style={inputStyle} value={age} onChange={e => setAge(e.target.value)} placeholder="e.g. 7" />)}
         {field("Gender *",
-          <select style={inputStyle} value={form.gender} onChange={e => set("gender")(e.target.value as "boy" | "girl" | "")}>
+          <select style={inputStyle} value={gender} onChange={e => setGender(e.target.value as "boy" | "girl" | "")}>
             <option value="">— Select —</option>
-            <option value="boy">Boy</option>
             <option value="girl">Girl</option>
+            <option value="boy">Boy</option>
           </select>
         )}
       </div>
 
       {/* Costume */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+      {sec("Costume")}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
         {field("Costume Type *",
-          <select style={inputStyle} value={form.costumeType} onChange={e => set("costumeType")(e.target.value as CostumeType | "")}>
-            <option value="">— Select —</option>
-            {Object.entries(CostumeTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <select style={inputStyle} value={costumeType} onChange={e => setCostumeType(e.target.value as CostumeType | "")}>
+            <option value="">— Select type —</option>
+            {Object.entries(CostumeTypeLabels).map(([k, v]) => (
+              <option key={k} value={k}>{v} — ${COSTUME_PRICES[k] ?? "?"}</option>
+            ))}
           </select>
         )}
-        {field("Style", <input style={inputStyle} value={form.style} onChange={e => set("style")(e.target.value)} placeholder="e.g. White Tank" />)}
+        {field("Style / Option", <input style={inputStyle} value={style} onChange={e => setStyle(e.target.value)} placeholder="e.g. Grown Gyal" />)}
+      </div>
+
+      {/* Model */}
+      <label style={{ display: "flex", alignItems: "center", gap: "0.6rem", cursor: "pointer", padding: "0.6rem 0.75rem", borderRadius: "0.75rem", background: isModel ? "rgba(255,0,110,0.06)" : "#F9FAFB", border: `1.5px solid ${isModel ? "rgba(255,0,110,0.3)" : "#E5E7EB"}` }}>
+        <input type="checkbox" checked={isModel} onChange={e => setIsModel(e.target.checked)}
+          style={{ width: "1rem", height: "1rem", accentColor: "#FF006E", cursor: "pointer" }} />
+        <div>
+          <span style={{ fontSize: "0.875rem", fontWeight: 700, color: isModel ? "#FF006E" : "#374151" }}>🌟 Model — ${MODEL_DISCOUNT} discount applied</span>
+          <p style={{ fontSize: "0.72rem", color: "#6B7280", margin: 0 }}>Models receive $150 off their costume price</p>
+        </div>
+      </label>
+
+      {/* Add-ons */}
+      {sec("Add-Ons & Upgrades")}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
+        {ADD_ON_ITEMS.map(item => {
+          const on = selectedAddOns.includes(item.key);
+          return (
+            <label key={item.key} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.45rem 0.65rem", borderRadius: "0.6rem", cursor: "pointer", border: `1.5px solid ${on ? "#1A73E8" : "#E5E7EB"}`, background: on ? "rgba(26,115,232,0.05)" : "#FAFAFA" }}>
+              <input type="checkbox" checked={on} onChange={() => toggleAddOn(item.key)}
+                style={{ width: "0.875rem", height: "0.875rem", accentColor: "#1A73E8", cursor: "pointer", flexShrink: 0 }} />
+              <span style={{ fontSize: "0.78rem", color: "#374151", flex: 1 }}>{item.label}</span>
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1A73E8", flexShrink: 0 }}>${item.price}</span>
+            </label>
+          );
+        })}
       </div>
 
       {/* Sizing */}
-      <div>
-        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Sizing</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
-          {field("Top Size",      <input style={inputStyle} value={form.topSize}      onChange={e => set("topSize")(e.target.value)}      placeholder="e.g. 4T" />)}
-          {field("Bottom Size",   <input style={inputStyle} value={form.bottomSize}   onChange={e => set("bottomSize")(e.target.value)}   placeholder="e.g. 4T" />)}
-          {field("Band Size",     <input style={inputStyle} value={form.bandSize}     onChange={e => set("bandSize")(e.target.value)}     placeholder="Small / Large" />)}
-          {field("Girls Top",     <input style={inputStyle} value={form.girlsTopSize} onChange={e => set("girlsTopSize")(e.target.value)} placeholder="Small / XL" />)}
-          {field("Waist",         <input style={inputStyle} value={form.waist}        onChange={e => set("waist")(e.target.value)}        placeholder='e.g. 22"' />)}
-          {field("Shoe Size",     <input style={inputStyle} value={form.shoeSize}     onChange={e => set("shoeSize")(e.target.value)}     placeholder="e.g. 8" />)}
-        </div>
-        <div style={{ marginTop: "0.6rem" }}>
-          {field("Shoe Category", <input style={inputStyle} value={form.shoeCategory} onChange={e => set("shoeCategory")(e.target.value)} placeholder="e.g. Toddler, Adult, Little Kid" />)}
-        </div>
+      {sec("Sizing")}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+        {field("Top Size",    <input style={inputStyle} value={topSize}      onChange={e => setTopSize(e.target.value)}      placeholder="e.g. 4T" />)}
+        {field("Bottom Size", <input style={inputStyle} value={bottomSize}   onChange={e => setBottomSize(e.target.value)}   placeholder="e.g. 4T" />)}
+        {field("Band Size",   <input style={inputStyle} value={bandSize}     onChange={e => setBandSize(e.target.value)}     placeholder="S / L" />)}
+        {field("Girls Top",   <input style={inputStyle} value={girlsTopSize} onChange={e => setGirlsTopSize(e.target.value)} placeholder="S / XL" />)}
+        {field("Waist",       <input style={inputStyle} value={waist}        onChange={e => setWaist(e.target.value)}        placeholder='e.g. 22"' />)}
+        {field("Shoe Size",   <input style={inputStyle} value={shoeSize}     onChange={e => setShoeSize(e.target.value)}     placeholder="e.g. 8" />)}
       </div>
-
-      {/* Add-ons */}
-      {field("Add-ons", <input style={inputStyle} value={form.addOns} onChange={e => set("addOns")(e.target.value)} placeholder="e.g. Extra necklace, Crown upgrade" />)}
+      {field("Shoe Category", <input style={inputStyle} value={shoeCategory} onChange={e => setShoeCategory(e.target.value)} placeholder="e.g. Toddler, Adult, Little Kid" />)}
 
       {/* Parent */}
-      <div>
-        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Parent / Guardian</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-          {field("Name *",  <input style={inputStyle} value={form.parentName}  onChange={e => set("parentName")(e.target.value)}  placeholder="Parent name" />)}
-          {field("Phone",   <input style={inputStyle} value={form.parentPhone} onChange={e => set("parentPhone")(e.target.value)} placeholder="e.g. 868-555-0100" />)}
-          <div style={{ gridColumn: "1 / -1" }}>
-            {field("Email", <input type="email" style={inputStyle} value={form.parentEmail} onChange={e => set("parentEmail")(e.target.value)} placeholder="email@example.com" />)}
-          </div>
+      {sec("Parent / Guardian")}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+        {field("Name *",  <input style={inputStyle} value={parentName}  onChange={e => setParentName(e.target.value)}  placeholder="Parent name" />)}
+        {field("Phone",   <input style={inputStyle} value={parentPhone} onChange={e => setParentPhone(e.target.value)} placeholder="e.g. 868-555-0100" />)}
+        <div style={{ gridColumn: "1 / -1" }}>
+          {field("Email", <input type="email" style={inputStyle} value={parentEmail} onChange={e => setParentEmail(e.target.value)} placeholder="email@example.com" />)}
         </div>
       </div>
 
       {/* Payment */}
-      <div>
-        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Payment</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
-          {field("Amount Paid ($)", <input type="number" min="0" step="0.01" style={inputStyle} value={form.amountPaid} onChange={e => set("amountPaid")(e.target.value)} />)}
-          {field("Total Cost ($)",  <input type="number" min="0" step="0.01" style={inputStyle} value={form.totalCost}  onChange={e => set("totalCost")(e.target.value)} />)}
-          {field("Status",
-            <select style={inputStyle} value={form.paymentStatus} onChange={e => set("paymentStatus")(e.target.value as PaymentStatus)}>
-              <option value="paid">Paid</option>
-              <option value="partial">Partial</option>
+      {sec("Payment")}
+      <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "0.875rem", padding: "0.875rem" }}>
+        {/* Pricing breakdown */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.75rem" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#374151" }}>
+            <span>Costume — {costumeType ? CostumeTypeLabels[costumeType as CostumeType] : "—"}</span>
+            <span style={{ fontWeight: 600 }}>{costumeBasePrice ? `$${costumeBasePrice}` : "—"}</span>
+          </div>
+          {addOnTotal > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#374151" }}>
+              <span>Add-ons ({selectedAddOns.length})</span>
+              <span style={{ fontWeight: 600 }}>+${addOnTotal}</span>
+            </div>
+          )}
+          {modelDiscount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#FF006E" }}>
+              <span>Model discount 🌟</span>
+              <span style={{ fontWeight: 600 }}>−${modelDiscount}</span>
+            </div>
+          )}
+          <div style={{ borderTop: "1px solid #E5E7EB", paddingTop: "0.35rem", display: "flex", justifyContent: "space-between", fontSize: "0.9rem", fontWeight: 800, color: "#1E2029" }}>
+            <span>Total</span>
+            <span>${totalCost}</span>
+          </div>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+          {field("Payment Status",
+            <select style={inputStyle} value={paymentStatus} onChange={e => setPaymentStatus(e.target.value as PaymentStatus)}>
               <option value="unpaid">Unpaid</option>
+              <option value="deposit">Deposit Paid (50% = ${Math.round(totalCost * 0.5)})</option>
+              <option value="partial">Partial Payment</option>
+              <option value="paid">Paid in Full</option>
             </select>
           )}
+          {paymentStatus === "partial" && field("Amount Paid ($)",
+            <input type="number" min="0" step="0.01" style={inputStyle}
+              value={amountPaidOverride}
+              onChange={e => setAmountPaidOverride(e.target.value)}
+              placeholder={`Max $${totalCost}`} />
+          )}
         </div>
+
+        {totalCost > 0 && (
+          <div style={{ marginTop: "0.75rem", display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+            <span style={{ color: "#6B7280" }}>Amount paid: <strong style={{ color: "#16A34A" }}>${amountPaid.toFixed(2)}</strong></span>
+            <span style={{ color: "#6B7280" }}>Balance owing: <strong style={{ color: balanceOwing > 0 ? "#DC2626" : "#16A34A" }}>${balanceOwing.toFixed(2)}</strong></span>
+          </div>
+        )}
       </div>
 
       {/* Notes */}
-      {field("Notes", <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }} value={form.notes} onChange={e => set("notes")(e.target.value)} placeholder="e.g. Sibling of ..." />)}
+      {field("Notes", <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }} value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Sibling of Ciara, needs extra arm bands" />)}
 
       {error && <p style={{ fontSize: "0.85rem", color: "#DC2626" }}>{error}</p>}
 
@@ -350,7 +405,8 @@ export default function RegistrationsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Payments</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="paid">Paid in Full</SelectItem>
+            <SelectItem value="deposit">Deposit Paid</SelectItem>
             <SelectItem value="partial">Partial</SelectItem>
             <SelectItem value="unpaid">Unpaid</SelectItem>
           </SelectContent>
@@ -414,6 +470,7 @@ export default function RegistrationsPage() {
                     <td style={{ padding: "0.875rem 1rem" }}>
                       <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{reg.parentName}</p>
                       {reg.parentPhone && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.parentPhone}</p>}
+                      {reg.parentEmail && <p style={{ fontSize: "0.72rem", color: "#6B7280", margin: 0 }}>{reg.parentEmail}</p>}
                     </td>
                     <td style={{ padding: "0.875rem 1rem" }}>
                       <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{reg.topSize || "—"}</p>
@@ -423,9 +480,10 @@ export default function RegistrationsPage() {
                       <PaymentBadge status={reg.paymentStatus} />
                     </td>
                     <td style={{ padding: "0.875rem 1rem" }}>
-                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A" }}>
-                        {formatCurrency(reg.balanceOwing)}
-                      </span>
+                      <p style={{ fontSize: "0.82rem", fontWeight: 600, color: "#374151", margin: 0 }}>${(reg.totalCost ?? (reg.amountPaid + reg.balanceOwing)).toFixed(2)}</p>
+                      <p style={{ fontSize: "0.72rem", color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A", margin: 0, fontWeight: 600 }}>
+                        {reg.balanceOwing > 0 ? `Owes $${reg.balanceOwing.toFixed(2)}` : "✓ Settled"}
+                      </p>
                     </td>
                     <td style={{ padding: "0.875rem 1rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", opacity: 0 }} className="group-hover:opacity-100" >
@@ -480,13 +538,15 @@ export default function RegistrationsPage() {
                     </button>
                   </div>
                 </div>
-                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #F3F4F6", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.875rem" }}>
-                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Costume</p><p style={{ color: "#374151", margin: 0 }}>{CostumeTypeLabels[reg.costumeType]}</p></div>
-                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Style</p><p style={{ color: "#374151", margin: 0 }}>{reg.style || "—"}</p></div>
-                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Parent</p><p style={{ color: "#374151", margin: 0 }}>{reg.parentName}</p></div>
+                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #F3F4F6", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.68rem", margin: 0 }}>Costume</p><p style={{ color: "#374151", fontSize: "0.82rem", margin: 0 }}>{CostumeTypeLabels[reg.costumeType]}{reg.isModel && <span style={{ color: "#FF006E", marginLeft: "0.3rem" }}>🌟</span>}</p></div>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.68rem", margin: 0 }}>Total</p><p style={{ color: "#374151", fontSize: "0.82rem", fontWeight: 700, margin: 0 }}>${(reg.totalCost ?? 0).toFixed(2)}</p></div>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.68rem", margin: 0 }}>Parent</p><p style={{ color: "#374151", fontSize: "0.82rem", margin: 0 }}>{reg.parentName}</p>
+                    {reg.parentEmail && <p style={{ color: "#6B7280", fontSize: "0.68rem", margin: 0 }}>{reg.parentEmail}</p>}
+                  </div>
                   <div>
-                    <p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Balance</p>
-                    <p style={{ fontWeight: 600, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A", margin: 0 }}>{formatCurrency(reg.balanceOwing)}</p>
+                    <p style={{ color: "#9CA3AF", fontSize: "0.68rem", margin: 0 }}>Balance</p>
+                    <p style={{ fontWeight: 700, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A", margin: 0, fontSize: "0.82rem" }}>{reg.balanceOwing > 0 ? `$${reg.balanceOwing.toFixed(2)}` : "✓ Settled"}</p>
                   </div>
                 </div>
               </motion.div>
@@ -504,8 +564,10 @@ export default function RegistrationsPage() {
           style={{ display: "flex", flexWrap: "wrap", gap: "1rem", fontSize: "0.875rem", color: "#6B7280" }}>
           <span>Total: <strong style={{ color: "#1E2029" }}>{filtered.length}</strong></span>
           <span>Paid: <strong style={{ color: "#16A34A" }}>{filtered.filter(r => r.paymentStatus === "paid").length}</strong></span>
+          <span>Deposit: <strong style={{ color: "#1D4ED8" }}>{filtered.filter(r => r.paymentStatus === "deposit").length}</strong></span>
           <span>Partial: <strong style={{ color: "#D97706" }}>{filtered.filter(r => r.paymentStatus === "partial").length}</strong></span>
           <span>Unpaid: <strong style={{ color: "#DC2626" }}>{filtered.filter(r => r.paymentStatus === "unpaid").length}</strong></span>
+          <span>Models: <strong style={{ color: "#FF006E" }}>{filtered.filter(r => r.isModel).length}</strong></span>
           <span style={{ marginLeft: "auto" }}>
             Outstanding: <strong style={{ color: "#DC2626" }}>{formatCurrency(filtered.reduce((s, r) => s + r.balanceOwing, 0))}</strong>
           </span>

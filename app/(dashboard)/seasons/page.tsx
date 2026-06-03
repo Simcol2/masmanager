@@ -73,12 +73,13 @@ function RegistrationRow({ reg }: { reg: Registration }) {
   if (reg.waist)       sizes.push(`Waist: ${reg.waist}`);
   if (reg.shoeSize)    sizes.push(`Shoe: ${reg.shoeSize}${reg.shoeCategory ? ` (${reg.shoeCategory})` : ""}`);
 
-  const payMap = {
+  const payMap: Record<string, { bg: string; color: string; label: string }> = {
     paid:    { bg: "rgba(76,175,80,0.1)",   color: "#2E7D32",  label: "Paid" },
     partial: { bg: "rgba(255,152,0,0.1)",   color: "#E65100",  label: "Partial" },
+    deposit: { bg: "rgba(29,78,216,0.1)",   color: "#1D4ED8",  label: "Deposit" },
     unpaid:  { bg: "rgba(229,57,53,0.1)",   color: "#B71C1C",  label: "Unpaid" },
-  } as const;
-  const pay = payMap[reg.paymentStatus];
+  };
+  const pay = payMap[reg.paymentStatus] ?? payMap.unpaid;
 
   return (
     <div style={{ background: "#FAFAFA", border: "1px solid #F3F4F6", borderRadius: "0.75rem", padding: "0.75rem 1rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>

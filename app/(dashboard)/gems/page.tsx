@@ -182,6 +182,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
   const isEdit = !!gem;
   const [name, setName] = useState(gem?.name ?? "");
   const [category, setCategory] = useState<SupplyCategory>(gem?.category ?? "rhinestone");
+  const [shape, setShape] = useState(gem?.shape ?? "");
   const [availableColours, setAvailableColours] = useState<string[]>(gem?.availableColours ?? []);
   const [unitCost, setUnitCost] = useState(gem?.unitCost ?? 0);
   const [qtyOnHand, setQtyOnHand] = useState(gem?.quantityOnHand ?? 0);
@@ -230,7 +231,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     setSaving(true); setError("");
     try {
       const payload = {
-        name: name.trim(), category, availableColours, unitCost,
+        name: name.trim(), category, shape: shape || undefined, availableColours, unitCost,
         quantityOnHand: qtyOnHand, unit,
         minOrder: minOrder || undefined,
         supplierLink: supplierLink || undefined,
@@ -296,6 +297,14 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                   <select value={category} onChange={e => setCategory(e.target.value as SupplyCategory)} style={inputStyle}>
                     {(Object.entries(CATEGORY_LABELS) as [SupplyCategory, string][]).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                )}
+                {field("Shape",
+                  <select value={shape} onChange={e => setShape(e.target.value)} style={inputStyle}>
+                    <option value="">— Any shape —</option>
+                    {["Round","Oval","Square","Rectangle","Teardrop","Heart","Star","Hexagon","Triangle","Navette","Pear","Marquise","Flatback","Cabochon","Baguette","Horse Eye","Irregular","Other"].map(s => (
+                      <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
                 )}

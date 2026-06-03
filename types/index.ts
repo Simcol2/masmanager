@@ -3,7 +3,7 @@ import { z } from "zod";
 // Enums
 export const UserRole = z.enum(["admin", "registrar", "production"]);
 export const SeasonStatus = z.enum(["active", "archived", "draft"]);
-export const PaymentStatus = z.enum(["paid", "partial", "unpaid"]);
+export const PaymentStatus = z.enum(["paid", "partial", "deposit", "unpaid"]);
 export const Gender = z.enum(["boy", "girl"]);
 
 export const CostumeType = z.enum([
@@ -70,7 +70,13 @@ export const RegistrationSchema = z.object({
   waist: z.string().optional(),
   shoeSize: z.string().optional(),
   shoeCategory: z.string().optional(),
-  addOns: z.string().optional(),
+  addOns: z.string().optional(),           // human-readable list, auto-populated
+  selectedAddOns: z.array(z.string()).default([]),  // structured add-on keys
+  isModel: z.boolean().default(false),      // models get $150 off
+  costumeBasePrice: z.number().min(0).default(0),
+  addOnTotal: z.number().min(0).default(0),
+  modelDiscount: z.number().min(0).default(0),
+  totalCost: z.number().min(0).default(0),
   parentName: z.string().min(1),
   parentEmail: z.string().email().optional(),
   parentPhone: z.string().optional(),
@@ -260,6 +266,7 @@ export const GemSupplySchema = z.object({
   minOrder: z.string().optional(),   // e.g. "200/bag", "10 yards min"
   supplierLink: z.string().optional(), // URL to product listing
   supplier: z.string().optional(),
+  shape: z.string().optional(),            // e.g. "Round", "Teardrop", "Rectangle"
   notes: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
