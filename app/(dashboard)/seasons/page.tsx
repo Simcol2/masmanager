@@ -16,6 +16,7 @@ import {
   getMasterPieces, seedDefaultPieces,
   upsertSeasonPieceConfig, getSeasonPieceConfigs, deleteSeasonPieceConfig,
 } from "@/lib/services/pieces";
+import { getRegistrations, seedRegistrations } from "@/lib/services/registrations";
 
 const SEASONS = ["2026"] as const;
 
@@ -61,34 +62,8 @@ const PIECE_COLORS: Record<string, { bg: string; color: string }> = {
 
 const CARD_ACCENT = ["#FF006E","#1A73E8","#FFD60A","#FF6B35","#00BCD4","#673AB7","#4CAF50"];
 
-// Mock registrations — replace with Firestore query once registrations service is wired
-const MOCK_REGISTRATIONS: Registration[] = [
-  // girls_backline
-  { id: "r1", seasonId: "2026", firstName: "Ayla", lastName: "Thomas", age: 12, gender: "girl", costumeType: "girls_backline", topSize: "Youth M", bottomSize: "Youth M", bandSize: "Small", waist: "24in", shoeSize: "4", shoeCategory: "Girls", addOns: "Extra necklace", parentName: "Sandra Thomas", parentPhone: "868-555-0101", registrationDate: new Date("2024-11-15"), paymentStatus: "paid", amountPaid: 2500, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r2", seasonId: "2026", firstName: "Maya", lastName: "Baptiste", age: 9, gender: "girl", costumeType: "girls_backline", topSize: "Youth S", bottomSize: "Youth S", bandSize: "Small", waist: "22in", shoeSize: "3", shoeCategory: "Girls", parentName: "Carla Baptiste", parentPhone: "868-555-0102", registrationDate: new Date("2024-11-18"), paymentStatus: "partial", amountPaid: 1250, balanceOwing: 1250, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r3", seasonId: "2026", firstName: "Zara", lastName: "Williams", age: 14, gender: "girl", costumeType: "girls_backline", topSize: "Youth L", bottomSize: "Youth L", bandSize: "Large", waist: "26in", shoeSize: "5", shoeCategory: "Girls", addOns: "Arm Band upgrade", parentName: "Denise Williams", parentPhone: "868-555-0103", registrationDate: new Date("2024-11-20"), paymentStatus: "paid", amountPaid: 2500, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  // boys_backline
-  { id: "r4", seasonId: "2026", firstName: "Kai", lastName: "Alexis", age: 11, gender: "boy", costumeType: "boys_backline", topSize: "Youth M", bottomSize: "Youth M", bandSize: "Small", parentName: "Marcus Alexis", parentPhone: "868-555-0104", registrationDate: new Date("2024-11-12"), paymentStatus: "paid", amountPaid: 2200, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r5", seasonId: "2026", firstName: "Elijah", lastName: "Pierre", age: 8, gender: "boy", costumeType: "boys_backline", topSize: "Youth S", bottomSize: "Youth S", bandSize: "Small", parentName: "Jean Pierre", parentPhone: "868-555-0105", registrationDate: new Date("2024-11-14"), paymentStatus: "unpaid", amountPaid: 0, balanceOwing: 2200, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r6", seasonId: "2026", firstName: "Nolan", lastName: "Joseph", age: 13, gender: "boy", costumeType: "boys_backline", topSize: "Youth L", bottomSize: "Youth L", bandSize: "Large", addOns: "Extra belt", parentName: "Kevin Joseph", parentPhone: "868-555-0106", registrationDate: new Date("2024-11-16"), paymentStatus: "paid", amountPaid: 2200, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r7", seasonId: "2026", firstName: "Theo", lastName: "Ramkissoon", age: 10, gender: "boy", costumeType: "boys_backline", topSize: "Youth M", bottomSize: "Youth M", bandSize: "Small", parentName: "Rita Ramkissoon", parentPhone: "868-555-0107", registrationDate: new Date("2024-11-19"), paymentStatus: "partial", amountPaid: 1100, balanceOwing: 1100, createdAt: new Date(), updatedAt: new Date() },
-  // toddler_frontline
-  { id: "r8", seasonId: "2026", firstName: "Lily", lastName: "Charles", age: 3, gender: "girl", costumeType: "toddler_frontline", topSize: "3T", bottomSize: "3T", bandSize: "Small", shoeSize: "7", shoeCategory: "Toddler", parentName: "Tanya Charles", parentPhone: "868-555-0108", registrationDate: new Date("2024-12-01"), paymentStatus: "paid", amountPaid: 1800, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  // girls_ultra_frontline
-  { id: "r9", seasonId: "2026", firstName: "Serena", lastName: "Mohammed", age: 15, gender: "girl", costumeType: "girls_ultra_frontline", topSize: "Adult S", bottomSize: "Adult S", bandSize: "Small", waist: "25in", shoeSize: "6", shoeCategory: "Women", addOns: "Crown upgrade, Extra feathers", parentName: "Farida Mohammed", parentPhone: "868-555-0109", registrationDate: new Date("2024-11-10"), paymentStatus: "paid", amountPaid: 4500, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  // boys_ultra_frontline
-  { id: "r10", seasonId: "2026", firstName: "Jordan", lastName: "Lewis", age: 14, gender: "boy", costumeType: "boys_ultra_frontline", topSize: "Youth XL", bottomSize: "Youth XL", bandSize: "Large", addOns: "Soccer ball upgrade", parentName: "Robert Lewis", parentPhone: "868-555-0110", registrationDate: new Date("2024-11-11"), paymentStatus: "paid", amountPaid: 4200, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r11", seasonId: "2026", firstName: "Asher", lastName: "Prescott", age: 12, gender: "boy", costumeType: "boys_ultra_frontline", topSize: "Youth L", bottomSize: "Youth L", bandSize: "Large", parentName: "Anna Prescott", parentPhone: "868-555-0111", registrationDate: new Date("2024-11-22"), paymentStatus: "partial", amountPaid: 2100, balanceOwing: 2100, createdAt: new Date(), updatedAt: new Date() },
-  { id: "r12", seasonId: "2026", firstName: "Devon", lastName: "Bartholomew", age: 16, gender: "boy", costumeType: "boys_ultra_frontline", topSize: "Adult S", bottomSize: "Adult S", bandSize: "Large", addOns: "Backpack upgrade", parentName: "Claire Bartholomew", parentPhone: "868-555-0112", registrationDate: new Date("2024-12-05"), paymentStatus: "unpaid", amountPaid: 0, balanceOwing: 4200, createdAt: new Date(), updatedAt: new Date() },
-];
 
-// Derive counts from mock data so the summary card stays in sync
-const REGISTRATION_COUNTS = COSTUME_ORDER.reduce((acc, type) => {
-  acc[type] = MOCK_REGISTRATIONS.filter(r => r.costumeType === type).length;
-  return acc;
-}, {} as Record<CostumeType, number>);
-
-// ── Registration row ─────────────────────────────────────────────────────────
+// ── Registration row ──────────────────────────────────────────────────────────
 function RegistrationRow({ reg }: { reg: Registration }) {
   const sizes: string[] = [];
   if (reg.topSize)     sizes.push(`Top: ${reg.topSize}`);
@@ -141,10 +116,11 @@ function RegistrationRow({ reg }: { reg: Registration }) {
 
 // ── Costume detail dialog ────────────────────────────────────────────────────
 function CostumeDetailDialog({
-  costumeType, season, open, onClose,
+  costumeType, season, registrations, open, onClose,
 }: {
   costumeType: CostumeType | null;
   season: string;
+  registrations: Registration[];
   open: boolean;
   onClose: () => void;
 }) {
@@ -214,7 +190,7 @@ function CostumeDetailDialog({
   if (!costumeType) return null;
 
   const defaultPieces = COSTUME_BREAKDOWN[costumeType];
-  const registrations = MOCK_REGISTRATIONS.filter(r => r.costumeType === costumeType);
+  const costumeRegistrations = registrations.filter(r => r.costumeType === costumeType);
   const accent = CARD_ACCENT[COSTUME_ORDER.indexOf(costumeType) % CARD_ACCENT.length];
 
   const configuredPieceIds = new Set(pieceConfigs.map(c => c.masterPieceId));
@@ -240,7 +216,7 @@ function CostumeDetailDialog({
                 {CostumeTypeLabels[costumeType]}
               </h2>
               <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: 0 }}>
-                {season} Season · {registrations.length} registration{registrations.length !== 1 ? "s" : ""}
+                {season} Season · {costumeRegistrations.length} registration{costumeRegistrations.length !== 1 ? "s" : ""}
               </p>
             </div>
           </div>
@@ -355,13 +331,13 @@ function CostumeDetailDialog({
             <h3 style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", marginBottom: "0.75rem" }}>
               Registrations ({registrations.length})
             </h3>
-            {registrations.length === 0 ? (
+            {costumeRegistrations.length === 0 ? (
               <div style={{ textAlign: "center", padding: "2rem", color: "#9CA3AF", fontSize: "0.875rem", background: "#F9FAFB", borderRadius: "0.75rem", border: "1px solid #F3F4F6" }}>
                 No registrations yet for this costume type
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {registrations.map(reg => <RegistrationRow key={reg.id} reg={reg} />)}
+                {costumeRegistrations.map(reg => <RegistrationRow key={reg.id} reg={reg} />)}
               </div>
             )}
           </section>
@@ -372,14 +348,14 @@ function CostumeDetailDialog({
 }
 
 // ── Costume card ─────────────────────────────────────────────────────────────
-function CostumeCard({ costumeType, index, onViewDetails }: {
+function CostumeCard({ costumeType, count, index, onViewDetails }: {
   costumeType: CostumeType;
+  count: number;
   index: number;
   onViewDetails: () => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const pieces = COSTUME_BREAKDOWN[costumeType];
-  const count = REGISTRATION_COUNTS[costumeType];
   const accent = CARD_ACCENT[index % CARD_ACCENT.length];
 
   return (
@@ -451,9 +427,20 @@ function CostumeCard({ costumeType, index, onViewDetails }: {
 export default function SeasonsPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>("2026");
   const [detailType, setDetailType] = useState<CostumeType | null>(null);
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
 
-  const totalRegistrations = Object.values(REGISTRATION_COUNTS).reduce((s, n) => s + n, 0);
-  const activeTypes = COSTUME_ORDER.filter(c => REGISTRATION_COUNTS[c] > 0).length;
+  useEffect(() => {
+    let cancelled = false;
+    seedRegistrations()
+      .catch(() => {})
+      .then(() => getRegistrations(selectedSeason))
+      .then(data => { if (!cancelled) setRegistrations(data); })
+      .catch(console.error);
+    return () => { cancelled = true; };
+  }, [selectedSeason]);
+
+  const totalRegistrations = registrations.length;
+  const activeTypes = COSTUME_ORDER.filter(c => registrations.some(r => r.costumeType === c)).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -520,6 +507,7 @@ export default function SeasonsPage() {
                 <CostumeCard
                   key={costumeType}
                   costumeType={costumeType}
+                  count={registrations.filter(r => r.costumeType === costumeType).length}
                   index={i}
                   onViewDetails={() => setDetailType(costumeType)}
                 />
@@ -558,6 +546,7 @@ export default function SeasonsPage() {
       <CostumeDetailDialog
         costumeType={detailType}
         season={selectedSeason}
+        registrations={registrations}
         open={!!detailType}
         onClose={() => setDetailType(null)}
       />
