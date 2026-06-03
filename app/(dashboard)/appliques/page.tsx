@@ -611,12 +611,12 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent
         onOpenAutoFocus={e => e.preventDefault()}
-        style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden" }}
+        style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100dvh - 1rem)" }}
       >
         <style>{`
-          .applique-builder-body { display:flex; flex-direction:column; min-height:55vh; height:auto; gap:1rem; }
-          .applique-builder-left { flex:1 1 0; display:flex; flex-direction:column; border-right:none; min-width:0; }
-          .applique-builder-right { width:100%; flex-shrink:0; display:flex; flex-direction:column; background:#FAFAFA; }
+          .applique-builder-body { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+          .applique-builder-left { height:42vh; min-height:200px; flex-shrink:0; display:flex; flex-direction:column; border-right:none; min-width:0; border-bottom:1px solid #F3F4F6; }
+          .applique-builder-right { flex:1; min-height:0; display:flex; flex-direction:column; background:#FAFAFA; }
           .applique-builder-right .builder-actions { display:flex; flex-direction:column; gap:0.5rem; }
           .applique-builder-bottom-actions { display:flex; flex-direction:column; gap:0.5rem; }
           .usage-grid { display:grid; grid-template-columns:1fr; gap:0.5rem; }
@@ -626,15 +626,15 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
             .applique-form-photo { width: min(7rem, 100%); height: 7rem; }
           }
           @media (min-width: 900px) {
-            .applique-builder-body { flex-direction:row; height:68vh; min-height:480px; }
-            .applique-builder-left { border-right:1px solid #F3F4F6; }
-            .applique-builder-right { width:19rem; }
+            .applique-builder-body { flex-direction:row; }
+            .applique-builder-left { flex:1 1 0; height:auto; min-height:0; border-right:1px solid #F3F4F6; border-bottom:none; }
+            .applique-builder-right { width:19rem; flex:0 0 19rem; }
             .applique-builder-bottom-actions { flex-direction:row; justify-content:flex-end; }
             .applique-builder-right .builder-actions { flex-direction:column; }
           }
         `}</style>
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.25rem", borderBottom: "1px solid #F3F4F6" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.25rem", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
           <div style={{ width: "2rem", height: "2rem", borderRadius: "0.5rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Hammer style={{ width: "1rem", height: "1rem", color: isEdit ? "#1A73E8" : "#FF006E" }} />
           </div>
@@ -718,7 +718,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
 
           {/* RIGHT — Builder panel */}
           <div className="applique-builder-right">
-            <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+            <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.6rem", flexShrink: 0 }}>
               <div>
                 <label style={{ fontSize: "0.73rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.25rem" }}>Applique Name *</label>
                 <input style={iSt} placeholder="e.g. Gold Star Cluster" value={name} onChange={e => setName(e.target.value)} />
@@ -771,7 +771,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
               ))}
             </div>
 
-            <div style={{ padding: "0.875rem 1rem", borderTop: "1px solid #E5E7EB", background: "#FFFFFF" }}>
+            <div style={{ padding: "0.875rem 1rem", borderTop: "1px solid #E5E7EB", background: "#FFFFFF", flexShrink: 0 }}>
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "0.75rem" }}>
                 <div>
                   <p style={{ fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", margin: 0 }}>Cost per Applique</p>
