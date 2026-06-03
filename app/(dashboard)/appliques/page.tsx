@@ -531,7 +531,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
   const [uploadPct, setUploadPct] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const photoRef = useRef<HTMLInputElement>(null);
+  const [mobileTab, setMobileTab] = useState<"gems" | "build">("gems");
   const tempId = useRef(`temp_${Date.now()}`);
 
   const totalCost = ingredients.reduce((s, i) => s + i.lineCost, 0);
@@ -543,6 +543,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
     setName(applique?.name ?? ""); setNotes(applique?.notes ?? "");
     setPhotoURL(applique?.photoURL); setIngredients(applique?.ingredients ?? []);
     setSearch(""); setCatFilter("all"); setShapeFilter("all"); setError("");
+    setMobileTab("gems");
   }, [open, applique]);
 
   const filteredGems = gemSupplies.filter(g => {
@@ -611,30 +612,41 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent
         onOpenAutoFocus={e => e.preventDefault()}
-        style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "calc(100dvh - 1rem)" }}
+        style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "92dvh" }}
       >
         <style>{`
-          .applique-builder-body { display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
-          .applique-builder-left { height:42vh; min-height:200px; flex-shrink:0; display:flex; flex-direction:column; border-right:none; min-width:0; border-bottom:1px solid #F3F4F6; }
-          .applique-builder-right { flex:1; min-height:0; display:flex; flex-direction:column; background:#FAFAFA; }
-          .applique-builder-right .builder-actions { display:flex; flex-direction:column; gap:0.5rem; }
-          .applique-builder-bottom-actions { display:flex; flex-direction:column; gap:0.5rem; }
+          /* Shared */
+          .ab-header { flex-shrink:0; display:flex; align-items:center; gap:0.75rem; padding:0.875rem 1.25rem; border-bottom:1px solid #F3F4F6; }
+          .ab-tabs { display:flex; flex-shrink:0; border-bottom:1px solid #E5E7EB; }
+          .ab-tab { flex:1; padding:0.55rem; font-size:0.8rem; font-weight:600; border:none; background:none; cursor:pointer; color:#6B7280; border-bottom:2px solid transparent; transition:color .15s,border-color .15s; }
+          .ab-tab.active { color:#1A73E8; border-bottom-color:#1A73E8; }
+          .ab-body { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+          /* Mobile: only the active tab's panel is shown, each fills the body */
+          .ab-panel { flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden; }
+          .ab-panel.hidden { display:none; }
+          /* Right panel sections */
+          .ab-right-top { flex-shrink:0; padding:0.875rem 1rem; border-bottom:1px solid #F3F4F6; display:flex; flex-direction:column; gap:0.6rem; background:#FAFAFA; }
+          .ab-right-mid { flex:1; min-height:0; overflow-y:auto; padding:0.6rem; display:flex; flex-direction:column; gap:0.35rem; background:#FAFAFA; }
+          .ab-right-bot { flex-shrink:0; padding:0.875rem 1rem; border-top:1px solid #E5E7EB; background:#FFFFFF; }
+          .ab-save-row { display:flex; gap:0.5rem; }
           .usage-grid { display:grid; grid-template-columns:1fr; gap:0.5rem; }
           .photo-name-row { display:flex; flex-direction:column; gap:1rem; align-items:flex-start; }
           @media (min-width: 640px) {
             .photo-name-row { flex-direction:row; align-items:flex-start; }
-            .applique-form-photo { width: min(7rem, 100%); height: 7rem; }
           }
+          /* Desktop: hide tabs, show both panels side by side */
           @media (min-width: 900px) {
-            .applique-builder-body { flex-direction:row; }
-            .applique-builder-left { flex:1 1 0; height:auto; min-height:0; border-right:1px solid #F3F4F6; border-bottom:none; }
-            .applique-builder-right { width:19rem; flex:0 0 19rem; }
-            .applique-builder-bottom-actions { flex-direction:row; justify-content:flex-end; }
-            .applique-builder-right .builder-actions { flex-direction:column; }
+            .ab-tabs { display:none; }
+            .ab-body { flex-direction:row; }
+            .ab-panel.hidden { display:flex; }
+            .ab-panel:first-child { flex:1 1 0; border-right:1px solid #F3F4F6; }
+            .ab-panel:last-child { width:19rem; flex:0 0 19rem; }
+            .ab-save-row { flex-direction:row; justify-content:flex-end; }
           }
         `}</style>
+
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.25rem", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
+        <div className="ab-header">
           <div style={{ width: "2rem", height: "2rem", borderRadius: "0.5rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Hammer style={{ width: "1rem", height: "1rem", color: isEdit ? "#1A73E8" : "#FF006E" }} />
           </div>
@@ -647,12 +659,22 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
           {error && <p style={{ fontSize: "0.78rem", color: "#DC2626", margin: 0 }}>{error}</p>}
         </div>
 
-        {/* Two-panel body */}
-        <div className="applique-builder-body">
+        {/* Mobile tab bar — hidden on desktop via CSS */}
+        <div className="ab-tabs">
+          <button className={`ab-tab${mobileTab === "gems" ? " active" : ""}`} onClick={() => setMobileTab("gems")}>
+            Pick Gems {ingredients.length > 0 ? `(${ingredients.length})` : ""}
+          </button>
+          <button className={`ab-tab${mobileTab === "build" ? " active" : ""}`} onClick={() => setMobileTab("build")}>
+            Build
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="ab-body">
 
           {/* LEFT — Gem picker */}
-          <div className="applique-builder-left" style={{ flex: "1 1 0", minWidth: 0 }}>
-            <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div className={`ab-panel${mobileTab !== "gems" ? " hidden" : ""}`}>
+            <div style={{ flexShrink: 0, padding: "0.75rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <div style={{ position: "relative" }}>
                 <Search style={{ position: "absolute", left: "0.6rem", top: "50%", transform: "translateY(-50%)", width: "0.85rem", height: "0.85rem", color: "#9CA3AF" }} />
                 <input placeholder="Search by name, code, colour…" value={search} onChange={e => setSearch(e.target.value)}
@@ -678,8 +700,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
                 </div>
               )}
             </div>
-
-            <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "0.5rem", alignContent: "start" }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "0.75rem", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: "0.5rem", alignContent: "start" }}>
               {filteredGems.length === 0 && (
                 <div style={{ gridColumn: "1/-1", textAlign: "center", paddingTop: "2.5rem", color: "#9CA3AF" }}>
                   <Gem style={{ width: "1.75rem", height: "1.75rem", margin: "0 auto 0.4rem" }} />
@@ -711,35 +732,39 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
                 );
               })}
             </div>
-            <div style={{ padding: "0.4rem 1rem", borderTop: "1px solid #F3F4F6", fontSize: "0.68rem", color: "#9CA3AF" }}>
+            <div style={{ flexShrink: 0, padding: "0.4rem 1rem", borderTop: "1px solid #F3F4F6", fontSize: "0.68rem", color: "#9CA3AF" }}>
               {filteredGems.length} shown · {ingredients.length} in applique
             </div>
           </div>
 
-          {/* RIGHT — Builder panel */}
-          <div className="applique-builder-right">
-            <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.6rem", flexShrink: 0 }}>
+          {/* RIGHT — Build panel */}
+          <div className={`ab-panel${mobileTab !== "build" ? " hidden" : ""}`}>
+            <div className="ab-right-top">
               <div>
                 <label style={{ fontSize: "0.73rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.25rem" }}>Applique Name *</label>
                 <input style={iSt} placeholder="e.g. Gold Star Cluster" value={name} onChange={e => setName(e.target.value)} />
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                <div style={{ width: "3.25rem", height: "3.25rem", borderRadius: "0.5rem", flexShrink: 0, border: "2px dashed #E5E7EB", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", overflow: "hidden" }}
-                  onClick={() => photoRef.current?.click()}>
-                  {uploading ? <Loader2 style={{ width: "1rem", height: "1rem", color: "#1A73E8" }} className="animate-spin" />
-                    : photoURL
-                      // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      : <ImageIcon style={{ width: "1rem", height: "1rem", color: "#9CA3AF" }} />}
-                </div>
-                <div>
-                  <button type="button" onClick={() => photoRef.current?.click()} style={{ fontSize: "0.73rem", fontWeight: 600, color: "#1A73E8", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                    {photoURL ? "Change photo" : "Upload photo"}
-                  </button>
-                  <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>JPG/PNG up to 5 MB</p>
-                </div>
-                <input ref={photoRef} type="file" accept="image/*" style={{ display: "none" }}
-                  onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); e.target.value = ""; }} />
+              {/* Photo upload — label tag so clicking anywhere opens picker */}
+              <div>
+                <label style={{ fontSize: "0.73rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.25rem" }}>Photo</label>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer" }}>
+                  <div style={{ width: "4rem", height: "4rem", borderRadius: "0.5rem", flexShrink: 0, border: `2px dashed ${photoURL ? "#1A73E8" : "#D1D5DB"}`, background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    {uploading
+                      ? <Loader2 style={{ width: "1.25rem", height: "1.25rem", color: "#1A73E8" }} className="animate-spin" />
+                      : photoURL
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={photoURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <ImageIcon style={{ width: "1.25rem", height: "1.25rem", color: "#9CA3AF" }} />}
+                  </div>
+                  <div>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1A73E8" }}>
+                      {uploading ? `Uploading ${uploadPct}%…` : photoURL ? "Change photo" : "Upload photo"}
+                    </span>
+                    <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: "0.15rem 0 0" }}>JPG/PNG up to 5 MB</p>
+                  </div>
+                  <input type="file" accept="image/*" style={{ display: "none" }}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handlePhoto(f); e.target.value = ""; }} />
+                </label>
               </div>
               <div>
                 <label style={{ fontSize: "0.73rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.25rem" }}>Notes</label>
@@ -747,11 +772,11 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
               </div>
             </div>
 
-            <div style={{ flex: 1, overflowY: "auto", padding: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            <div className="ab-right-mid">
               {ingredients.length === 0 ? (
                 <div style={{ textAlign: "center", paddingTop: "2rem", color: "#9CA3AF" }}>
                   <Sparkles style={{ width: "1.5rem", height: "1.5rem", margin: "0 auto 0.35rem" }} />
-                  <p style={{ fontSize: "0.78rem", margin: 0 }}>Click gems on the left to add them</p>
+                  <p style={{ fontSize: "0.78rem", margin: 0 }}>Go to Pick Gems tab to add gems</p>
                 </div>
               ) : ingredients.map(ing => (
                 <div key={ing.gemSupplyId} style={{ display: "flex", alignItems: "center", gap: "0.4rem", padding: "0.45rem 0.5rem", background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "0.6rem" }}>
@@ -771,7 +796,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
               ))}
             </div>
 
-            <div style={{ padding: "0.875rem 1rem", borderTop: "1px solid #E5E7EB", background: "#FFFFFF", flexShrink: 0 }}>
+            <div className="ab-right-bot">
               <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "0.75rem" }}>
                 <div>
                   <p style={{ fontSize: "0.68rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", margin: 0 }}>Cost per Applique</p>
@@ -779,7 +804,8 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
                   {ingredients.length > 0 && <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>{ingredients.length} gem{ingredients.length !== 1 ? "s" : ""} · {ingredients.reduce((s, i) => s + i.quantity, 0)} pcs total</p>}
                 </div>
               </div>
-              <div className="applique-builder-bottom-actions">
+              {error && <p style={{ fontSize: "0.8rem", color: "#DC2626", margin: "0 0 0.5rem" }}>{error}</p>}
+              <div className="ab-save-row">
                 <button type="button" onClick={onClose} style={{ flex: 1, padding: "0.55rem", borderRadius: "0.7rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer" }}>Cancel</button>
                 <button type="button" onClick={handleSave} disabled={saving || uploading || !name.trim()}
                   style={{ flex: 1, padding: "0.55rem", borderRadius: "0.7rem", border: "none", background: name.trim() ? (isEdit ? "#1A73E8" : "#FF006E") : "#E5E7EB", color: name.trim() ? "#FFFFFF" : "#9CA3AF", fontWeight: 700, fontSize: "0.8rem", cursor: name.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
