@@ -34,7 +34,7 @@ import { motion } from "framer-motion";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { CostumeTypeLabels, PaymentStatus, type Registration } from "@/types";
 
-// Real registrations from Main Black Star Tracker.xlsx — Registrations sheet
+// Real registrations from Main Black Star Tracker.xlsx - Registrations sheet
 const mockRegistrations: Registration[] = [
   {
     id: "1",

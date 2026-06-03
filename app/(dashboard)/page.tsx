@@ -56,7 +56,7 @@ export default function DashboardPage() {
           { title: "Registrations", value: TOTAL_REGISTRATIONS, href: "/registrations", icon: Users, color: "#FF6B9D" },
           { title: "Shirt Orders", value: PARENT_SHIRTS.length, href: "/parent-shirts", icon: Shirt, color: "#00D4B8" },
           { title: "Costume Pieces", value: 14, href: "/pieces", icon: Library, color: "#FFD700" },
-          { title: "Appliques", value: "—", href: "/appliques", icon: Sparkles, color: "#9B5DE5" },
+          { title: "Appliques", value: "-", href: "/appliques", icon: Sparkles, color: "#9B5DE5" },
         ].map((card, i) => (
           <motion.div key={card.title} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Link href={card.href}>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
           {[
             { label: "2026 Season",    href: "/seasons",      icon: CalendarDays, color: "#D4AF37" },
             { label: "Piece Library",  href: "/pieces",       icon: Library,      color: "#FF6B9D" },
-            { label: "Gems & Supplies",href: "/gems",         icon: Gem,          color: "#FFD700" },
+            { label: "Supplies",        href: "/gems",         icon: Gem,          color: "#FFD700" },
             { label: "Appliques",      href: "/appliques",    icon: Sparkles,     color: "#9B5DE5" },
             { label: "Inventory",      href: "/inventory",    icon: Package,      color: "#00D4B8" },
           ].map(item => (

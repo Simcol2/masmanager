@@ -236,11 +236,13 @@ export const SupplyCategory = z.enum([
   "gem",
   "trim",
   "fabric",
-  "glue",
-  "wire",
   "feather",
-  "paint",
+  "frame",
+  "wire",
+  "glue",
+  "tool",
   "hardware",
+  "paint",
   "other",
 ]);
 

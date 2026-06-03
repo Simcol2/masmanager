@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CostumeTypeLabels, type CostumeType } from "@/types";
 
-// ── 2026 Season data — mapped from Main Black Star Tracker.xlsx ───────────────
+// ── 2026 Season data - mapped from Main Black Star Tracker.xlsx ───────────────
 
 const SEASONS = ["2026"] as const;
 
@@ -344,7 +344,7 @@ export default function SeasonsPage() {
           {/* Costume type grid */}
           <div>
             <h2 className="text-sm font-semibold text-void-400 uppercase tracking-wider mb-4">
-              Costume Styles — {selectedSeason}
+              Costume Styles - {selectedSeason}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {COSTUME_ORDER.map((costumeType, i) => (
@@ -360,7 +360,7 @@ export default function SeasonsPage() {
           {/* Appliques overview */}
           <div>
             <h2 className="text-sm font-semibold text-void-400 uppercase tracking-wider mb-4">
-              Appliques & Trims — {selectedSeason}
+              Appliques & Trims - {selectedSeason}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {APPLIQUES_2026.map((a, i) => (

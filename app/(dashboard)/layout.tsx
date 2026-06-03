@@ -22,7 +22,7 @@ export default function DashboardLayout({
     }
   }, [user, loading, router]);
 
-  // Still loading auth state — show spinner
+  // Still loading auth state - show spinner
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A0A0C" }}>
@@ -36,7 +36,7 @@ export default function DashboardLayout({
     );
   }
 
-  // Auth resolved but no user — redirect in flight, render nothing
+  // Auth resolved but no user - redirect in flight, render nothing
   if (!user) return null;
 
   return (

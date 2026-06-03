@@ -19,11 +19,13 @@ const CATEGORY_LABELS: Record<SupplyCategory, string> = {
   gem:        "Gem / Stone",
   trim:       "Trim",
   fabric:     "Fabric",
-  glue:       "Glue & Adhesive",
-  wire:       "Wire & Structure",
   feather:    "Feather",
-  paint:      "Paint & Finish",
+  frame:      "Frame / Base",
+  wire:       "Wire / Structure",
+  glue:       "Glue / Adhesive",
+  tool:       "Tool",
   hardware:   "Hardware",
+  paint:      "Paint / Finish",
   other:      "Other",
 };
 
@@ -33,11 +35,13 @@ const CATEGORY_COLORS: Record<SupplyCategory, string> = {
   gem:        "badge-yellow",
   trim:       "badge-teal",
   fabric:     "badge-purple",
-  glue:       "badge-coral",
-  wire:       "badge-gold",
   feather:    "badge-lime",
-  paint:      "badge-coral",
+  frame:      "badge-coral",
+  wire:       "badge-gold",
+  glue:       "badge-coral",
+  tool:       "badge-gold",
   hardware:   "badge-gold",
+  paint:      "badge-coral",
   other:      "bg-void-700/30 text-void-300 border border-void-600/30",
 };
 
@@ -208,7 +212,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
       <DialogContent className="glass-card border-void-800/50 max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl gold-text">
-            {isEdit ? `Edit — ${gem?.itemNumber}` : "New Supply Item"}
+            {isEdit ? `Edit - ${gem?.itemNumber}` : "New Supply Item"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
@@ -237,7 +241,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* Available colours — multiselect */}
+          {/* Available colours - multiselect */}
           <ColourMultiSelect selected={availableColours} onChange={setAvailableColours} />
 
           {/* Cost, qty, unit */}
@@ -296,7 +300,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
             <textarea
               rows={3}
               className="w-full rounded-md px-3 py-2 text-sm resize-none luxury-input"
-              placeholder="Any extra details — sizing, quality notes, where to find it…"
+              placeholder="Any extra details - sizing, quality notes, where to find it…"
               value={notes}
               onChange={e => setNotes(e.target.value)}
             />
@@ -416,7 +420,7 @@ export default function GemsPage() {
       }
       const data = await Promise.race([
         getGemSupplies(),
-        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Firestore timeout — check your security rules")), 10000)),
+        new Promise<never>((_, rej) => setTimeout(() => rej(new Error("Firestore timeout - check your security rules")), 10000)),
       ]) as Awaited<ReturnType<typeof getGemSupplies>>;
       setGems(data);
     } catch (e: unknown) {
@@ -439,9 +443,9 @@ export default function GemsPage() {
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="page-header">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Gems & Supplies</h1>
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Supplies</h1>
           <p className="mt-1" style={{ color: "rgba(180,200,240,0.6)" }}>
-            Raw materials — rhinestones, trims, fabric, glue, hardware
+            Gems, feathers, trims, fabric, frames, tools, hardware - everything you work with
           </p>
         </div>
         <Button className="gold-btn" onClick={() => setAddOpen(true)}>
@@ -536,7 +540,7 @@ export default function GemsPage() {
         <DialogContent className="glass-card border-void-800/50 max-w-sm">
           <DialogHeader><DialogTitle className="font-display text-xl text-crimson">Delete Supply</DialogTitle></DialogHeader>
           <p className="text-void-300 text-sm mt-2">
-            Delete <strong className="text-foreground">{deleteGem_?.itemNumber} — {deleteGem_?.name}</strong>?
+            Delete <strong className="text-foreground">{deleteGem_?.itemNumber} - {deleteGem_?.name}</strong>?
           </p>
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" onClick={() => setDeleteGem(undefined)} className="border-void-700 text-void-300">Cancel</Button>

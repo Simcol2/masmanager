@@ -10,7 +10,7 @@ const SETTINGS_SECTIONS = [
     href: "/pieces",
     icon: Library,
     color: "#FF6B9D",
-    label: "Costume Pieces — Master List",
+    label: "Costume Pieces - Master List",
     description: "Manage the universal list of costume pieces. Add, edit, or remove pieces that can be selected for any season.",
   },
 ];

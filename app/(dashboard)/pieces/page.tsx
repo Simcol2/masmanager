@@ -547,7 +547,7 @@ export default function PiecesPage() {
       <div className="flex items-center gap-2 text-sm text-void-500">
         <a href="/settings" className="hover:text-void-300 transition-colors">Settings</a>
         <span>/</span>
-        <span className="text-void-300">Costume Pieces — Master List</span>
+        <span className="text-void-300">Costume Pieces - Master List</span>
       </div>
 
       {/* Header */}
@@ -558,10 +558,10 @@ export default function PiecesPage() {
       >
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-            Costume Pieces — Master List
+            Costume Pieces - Master List
           </h1>
           <p className="text-void-400 mt-1">
-            Universal piece list — select from here when configuring each season
+            Universal piece list - select from here when configuring each season
           </p>
         </div>
         <div className="flex gap-2">

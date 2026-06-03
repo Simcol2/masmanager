@@ -105,7 +105,7 @@ function AddIngredientRow({ gemSupplies, existingIds, onAdd }: {
     if (!selected) return;
     onAdd({
       gemSupplyId: selected.id,
-      gemSupplyName: `${selected.name}${selected.colour ? ` (${selected.colour})` : ""}`,
+      gemSupplyName: `${selected.name}${selected.availableColours?.length ? ` (${selected.availableColours[0]})` : ""}`,
       quantity: qty,
       unitCost: selected.unitCost,
       lineCost: +(selected.unitCost * qty).toFixed(4),
@@ -124,7 +124,7 @@ function AddIngredientRow({ gemSupplies, existingIds, onAdd }: {
         <SelectContent style={{ background: "#0F2540", border: "1px solid rgba(255,255,255,0.15)" }}>
           {available.map(g => (
             <SelectItem key={g.id} value={g.id} style={{ color: "#F0F4FF" }}>
-              {g.itemNumber} — {g.name}{g.colour ? ` (${g.colour})` : ""} — ${g.unitCost}/{g.unit}
+              {g.itemNumber} - {g.name}{g.colour ? ` (${g.colour})` : ""} - ${g.unitCost}/{g.unit}
             </SelectItem>
           ))}
         </SelectContent>
@@ -300,7 +300,7 @@ function AppliqueFormDialog({ applique, open, onClose, onSaved, masterPieces, ge
       <DialogContent className="glass-card border-void-800/50 max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl gold-text">
-            {isEdit ? `Edit — ${applique?.itemNumber}` : "New Applique"}
+            {isEdit ? `Edit - ${applique?.itemNumber}` : "New Applique"}
           </DialogTitle>
         </DialogHeader>
 
@@ -337,7 +337,7 @@ function AppliqueFormDialog({ applique, open, onClose, onSaved, masterPieces, ge
                 onRemove={() => setIngredients(prev => prev.filter((_, idx) => idx !== i))} />
             ))}
             {gemSupplies.length === 0 ? (
-              <p className="text-xs text-void-500 italic py-1">No supply items yet — add them in Gems & Supplies first</p>
+              <p className="text-xs text-void-500 italic py-1">No supply items yet - add them in Gems & Supplies first</p>
             ) : (
               <AddIngredientRow gemSupplies={gemSupplies} existingIds={ingredients.map(i => i.gemSupplyId)}
                 onAdd={ing => setIngredients(prev => [...prev, ing])} />
@@ -474,7 +474,7 @@ export default function AppliquesPage() {
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Applique Library</h1>
           <p className="mt-1" style={{ color: "rgba(180,200,240,0.6)" }}>
-            Build appliques from your gem & supply ingredients — cost rolls up automatically
+            Build appliques from your gem & supply ingredients - cost rolls up automatically
           </p>
         </div>
         <Button className="gold-btn" onClick={() => setAddOpen(true)}>
@@ -530,7 +530,7 @@ export default function AppliquesPage() {
       <Dialog open={!!deleteApplique_} onOpenChange={v => !v && setDeleteApplique(undefined)}>
         <DialogContent className="glass-card border-void-800/50 max-w-sm">
           <DialogHeader><DialogTitle className="font-display text-xl text-crimson">Delete Applique</DialogTitle></DialogHeader>
-          <p className="text-void-300 text-sm mt-2">Delete <strong className="text-foreground">{deleteApplique_?.itemNumber} — {deleteApplique_?.name}</strong>? All usages will be removed.</p>
+          <p className="text-void-300 text-sm mt-2">Delete <strong className="text-foreground">{deleteApplique_?.itemNumber} - {deleteApplique_?.name}</strong>? All usages will be removed.</p>
           <div className="flex justify-end gap-3 mt-4">
             <Button variant="outline" onClick={() => setDeleteApplique(undefined)} className="border-void-700 text-void-300">Cancel</Button>
             <Button disabled={deleting} onClick={async () => {

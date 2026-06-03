@@ -19,7 +19,7 @@ interface ShirtOrder {
   qty: number;
 }
 
-// Real data from Main Black Star Tracker.xlsx — Parent T Shirts sheet
+// Real data from Main Black Star Tracker.xlsx - Parent T Shirts sheet
 // Cheryl ordered L, Aunty Angie ordered M (shirt styles from conversation context)
 const shirtOrders: ShirtOrder[] = [
   { id: "1", name: "Cheryl",      style: "Ghana Jersey",  size: "L", qty: 1 },

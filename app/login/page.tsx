@@ -187,7 +187,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-void-600 text-xs mt-6">
-          MasManager v1.0 — Built for the mas community
+          MasManager v1.0 - Built for the mas community
         </p>
       </motion.div>
     </div>
