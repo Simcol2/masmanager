@@ -29,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={cn("dark", "font-sans", geist.variable)} style={{ backgroundColor: "#0A0A0C" }}>
-      <body className={`${playfair.variable} ${inter.variable} font-sans`} style={{ backgroundColor: "#0A0A0C" }}>
+    <html lang="en" className={cn("dark", "font-sans", geist.variable)} style={{ backgroundColor: "#0D1B2E" }}>
+      <body className={`${playfair.variable} ${inter.variable} font-sans`} style={{ backgroundColor: "#0D1B2E" }}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
