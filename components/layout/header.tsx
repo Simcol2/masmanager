@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Bell, Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Sidebar } from "./sidebar";
 
 export function Header() {
@@ -23,11 +23,12 @@ export function Header() {
       <div className="flex items-center justify-between h-full px-4">
         <div className="flex items-center gap-3">
           <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" style={{ color: "#6B7280" }}>
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
+            <button
+              onClick={() => setOpen(true)}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: "0.5rem", borderRadius: "0.5rem", color: "#6B7280", display: "flex", alignItems: "center", justifyContent: "center" }}
+            >
+              <Menu style={{ width: "1.25rem", height: "1.25rem" }} />
+            </button>
             <SheetContent side="left" className="p-0 w-64" style={{ background: "#FFFFFF", borderRight: "1px solid #E5E7EB" }}>
               <Sidebar mobile />
             </SheetContent>
