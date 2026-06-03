@@ -431,8 +431,7 @@ function AppliqueCard({ applique, usages, onEdit, onDelete, index }: {
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}
       style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-      <div style={{ position: "relative", height: "8rem", display: "flex", alignItems: "center", justifyContent: "center", background: "#F9FAFB" }}
-        className="group">
+      <div style={{ position: "relative", height: "8rem", display: "flex", alignItems: "center", justifyContent: "center", background: "#F9FAFB" }}>
         {applique.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={applique.photoURL} alt={applique.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -442,16 +441,6 @@ function AppliqueCard({ applique, usages, onEdit, onDelete, index }: {
             <span style={{ fontSize: "0.72rem" }}>No photo</span>
           </div>
         )}
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", background: "rgba(255,255,255,0.85)", opacity: 0, transition: "opacity 0.15s" }}
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "0"}>
-          <button style={{ height: "1.75rem", padding: "0 0.5rem", fontSize: "0.75rem", fontWeight: 600, border: "1px solid rgba(26,115,232,0.4)", color: "#1A73E8", background: "rgba(26,115,232,0.06)", borderRadius: "0.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem" }} onClick={onEdit}>
-            <Pencil style={{ width: "0.75rem", height: "0.75rem" }} /> Edit
-          </button>
-          <button style={{ height: "1.75rem", padding: "0 0.5rem", fontSize: "0.75rem", fontWeight: 600, border: "1px solid rgba(220,38,38,0.4)", color: "#DC2626", background: "rgba(220,38,38,0.06)", borderRadius: "0.5rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem" }} onClick={onDelete}>
-            <Trash2 style={{ width: "0.75rem", height: "0.75rem" }} /> Del
-          </button>
-        </div>
       </div>
 
       <div style={{ padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -464,6 +453,18 @@ function AppliqueCard({ applique, usages, onEdit, onDelete, index }: {
             <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "#D97706", margin: 0 }}>${applique.totalCost.toFixed(2)}</p>
             <p style={{ fontSize: "0.6rem", color: "#9CA3AF", margin: 0 }}>to make</p>
           </div>
+        </div>
+
+        {/* Edit / Delete actions */}
+        <div style={{ display: "flex", gap: "0.4rem" }}>
+          <button onClick={onEdit}
+            style={{ flex: 1, height: "1.75rem", fontSize: "0.72rem", fontWeight: 600, border: "1px solid rgba(26,115,232,0.35)", color: "#1A73E8", background: "rgba(26,115,232,0.06)", borderRadius: "0.5rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem" }}>
+            <Pencil style={{ width: "0.65rem", height: "0.65rem" }} /> Edit
+          </button>
+          <button onClick={onDelete}
+            style={{ height: "1.75rem", padding: "0 0.55rem", fontSize: "0.72rem", fontWeight: 600, border: "1px solid rgba(220,38,38,0.35)", color: "#DC2626", background: "rgba(220,38,38,0.06)", borderRadius: "0.5rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Trash2 style={{ width: "0.65rem", height: "0.65rem" }} />
+          </button>
         </div>
 
         {applique.ingredients.length > 0 && (
