@@ -573,13 +573,16 @@ export default function GemsPage() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <>
+          <style>{`.gems-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem}@media(min-width:1024px){.gems-grid{grid-template-columns:repeat(4,1fr)}}`}</style>
+          <div className="gems-grid">
           {filtered.map((g, i) => (
             <SupplyCard key={g.id} gem={g} index={i}
               onEdit={() => setEditGem(g)}
               onDelete={() => setDeleteGem(g)} />
           ))}
-        </div>
+          </div>
+        </>
       )}
 
       {/* Add / Edit dialogs */}
