@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Bell, Menu } from "lucide-react";
@@ -8,12 +10,19 @@ import { Sidebar } from "./sidebar";
 
 export function Header() {
   const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close the sheet whenever the route changes
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   return (
     <header className="lg:hidden h-16 sticky top-0 z-30" style={{ background: "#FFFFFF", borderBottom: "1px solid #E5E7EB", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
       <div className="flex items-center justify-between h-full px-4">
         <div className="flex items-center gap-3">
-          <Sheet>
+          <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" style={{ color: "#6B7280" }}>
                 <Menu className="w-5 h-5" />
