@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, addDoc, updateDoc,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc, setDoc,
   deleteDoc, query, orderBy, serverTimestamp, Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -40,7 +40,6 @@ async function generateItemNumber(category: string): Promise<string> {
   let max = 0;
   snap.docs.forEach((d) => {
     const num = d.data().itemNumber as string ?? "";
-    // Match items with this exact prefix followed by a dash and digits
     const match = num.match(new RegExp(`^${prefix}-(\\d+)$`));
     if (match) {
       const n = parseInt(match[1], 10);
@@ -59,7 +58,6 @@ export async function getGemSupplies(): Promise<GemSupply[]> {
 export async function createGemSupply(
   data: Omit<GemSupply, "id" | "itemNumber" | "createdAt" | "updatedAt">
 ): Promise<GemSupply> {
-  // Generate outside transaction since it needs a full collection read
   const itemNumber = await generateItemNumber(data.category);
   const ref = await addDoc(collection(db, "gemSupplies"), {
     ...toFirestore(data as Record<string, unknown>),
@@ -85,41 +83,69 @@ export async function deleteGemSupply(id: string): Promise<void> {
 }
 
 // Pre-populated from Main Black Star Tracker.xlsx — Supply Costs sheet
+// batchPrice = total cost paid, batchQty = units in that batch, unitCost = batchPrice / batchQty (auto)
 const SEED_SUPPLIES = [
-  { itemNumber: "001A",  name: "Tear Drop Gem 17x28",            category: "gem",        availableColours: ["Clear / Crystal"], unitCost: 0.045, unit: "pcs",    quantityOnHand: 0, minOrder: "200/bag",      supplier: "Alibaba" },
-  { itemNumber: "002A",  name: "Horse Eye Gem 30x62",             category: "gem",        availableColours: ["Clear / Crystal"], unitCost: 0.26,  unit: "pcs",    quantityOnHand: 0, minOrder: "50/bag",       supplier: "Alibaba" },
-  { itemNumber: "100AB", name: "Rectangle Hot Fix Trim",          category: "trim",       availableColours: ["AB (Aurora Borealis)"], unitCost: 3.60, unit: "yards", quantityOnHand: 0, minOrder: "per yard",  supplier: "Alibaba" },
-  { itemNumber: "101AB", name: "Diamond Tape",                    category: "trim",       availableColours: ["AB (Aurora Borealis)"], unitCost: 1.60, unit: "yards", quantityOnHand: 0, minOrder: "per yard",  supplier: "Alibaba" },
-  { itemNumber: "102A",  name: "Gold Half Pearl Trim",            category: "trim",       availableColours: ["Gold"],            unitCost: 0.80,  unit: "yards",  quantityOnHand: 0, minOrder: "10 yds/pack",  supplier: "Alibaba" },
-  { itemNumber: "103A",  name: "Gold Pointy Half Pearl",          category: "trim",       availableColours: ["Gold"],            unitCost: 1.20,  unit: "yards",  quantityOnHand: 0, minOrder: "10 yds/pack",  supplier: "Alibaba" },
-  { itemNumber: "104AB", name: "Diamond Yellow AB Gem",           category: "rhinestone", availableColours: ["Yellow", "AB (Aurora Borealis)"], unitCost: 0.15, unit: "pcs", quantityOnHand: 0, minOrder: "200/bag", supplier: "McDonald & Wang" },
-  { itemNumber: "200T",  name: "Rooster Feather",                 category: "feather",    availableColours: ["Multi / Mixed"],   unitCost: 4.00,  unit: "metres", quantityOnHand: 0, minOrder: "per metre",    supplier: "Alibaba" },
-  { itemNumber: "201S",  name: "Ostrich Plumes",                  category: "feather",    availableColours: ["Multi / Mixed"],   unitCost: 3.50,  unit: "pcs",    quantityOnHand: 0, minOrder: "per plume",    supplier: "McDonald & Wang" },
-  { itemNumber: "500",   name: "Glue Sticks",                     category: "glue",       availableColours: [],                  unitCost: 30.00, unit: "lbs",    quantityOnHand: 0, minOrder: "per pound",    supplier: "McDonald & Wang" },
-  { itemNumber: "003AB", name: "30x40 Rectangle Gems",           category: "rhinestone", availableColours: ["AB (Aurora Borealis)"], unitCost: 0.14, unit: "pcs",  quantityOnHand: 0, minOrder: "50/bag",    supplier: "Alibaba" },
-  { itemNumber: "004AB", name: "16x30mm Gold Tear Drop Gems",     category: "gem",        availableColours: ["Gold"],            unitCost: 0.05,  unit: "pcs",    quantityOnHand: 0, minOrder: "200/bag",      supplier: "Alibaba" },
-  { itemNumber: "005AB", name: "Flat Back Resin Gems (Bulk)",     category: "rhinestone", availableColours: ["Multi / Mixed"],   unitCost: 0.42,  unit: "pcs",    quantityOnHand: 0, minOrder: "1000/bag",     supplier: "Alibaba" },
-  { itemNumber: "006AB", name: "17x28 Iridescent Tear Drop Gems", category: "rhinestone", availableColours: ["Iridescent"],     unitCost: 0.05,  unit: "pcs",    quantityOnHand: 0, minOrder: "200/bag",      supplier: "Alibaba" },
-  // Rows 17-20 from spreadsheet - unnamed, to be named by user
-  { itemNumber: "007",   name: "Unnamed Gem (Shein)",              category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "50/bag",       supplier: "Shein",           supplierLink: "https://share.temu.com/BZFIpiuggjA" },
-  { itemNumber: "008",   name: "Unnamed Gem (John Bead)",          category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "20/bag",       supplier: "John Bead",       supplierLink: null },
-  { itemNumber: "009",   name: "Unnamed Gem (Temu)",               category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "50/bag",       supplier: "Temu",            supplierLink: "https://share.temu.com/A2bR0q7nXdA" },
-  { itemNumber: "010",   name: "Unnamed Gem (Temu 2)",             category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "20/bag",       supplier: "Temu",            supplierLink: "https://share.temu.com/HV3ITX0pLLA" },
+  { itemNumber: "001A",  name: "Tear Drop Gem 17x28",             category: "gem",        availableColours: ["Clear / Crystal"],                batchPrice: 9.00,   batchQty: 200,  batchUnit: "bag",   unitCost: 0.045, quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Alibaba" },
+  { itemNumber: "002A",  name: "Horse Eye Gem 30x62",              category: "gem",        availableColours: ["Clear / Crystal"],                batchPrice: 13.00,  batchQty: 50,   batchUnit: "bag",   unitCost: 0.26,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Alibaba" },
+  { itemNumber: "100AB", name: "Rectangle Hot Fix Trim",           category: "trim",       availableColours: ["AB (Aurora Borealis)"],           batchPrice: 3.60,   batchQty: 1,    batchUnit: "yard",  unitCost: 3.60,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "yard",  supplier: "Alibaba" },
+  { itemNumber: "101AB", name: "Diamond Tape",                     category: "trim",       availableColours: ["AB (Aurora Borealis)"],           batchPrice: 1.60,   batchQty: 1,    batchUnit: "yard",  unitCost: 1.60,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "yard",  supplier: "Alibaba" },
+  { itemNumber: "102A",  name: "Gold Half Pearl Trim",             category: "trim",       availableColours: ["Gold"],                          batchPrice: 8.00,   batchQty: 10,   batchUnit: "yard",  unitCost: 0.80,  quantityOnHand: 0, minOrderQty: 10, minOrderUnit: "yard",  supplier: "Alibaba" },
+  { itemNumber: "103A",  name: "Gold Pointy Half Pearl",           category: "trim",       availableColours: ["Gold"],                          batchPrice: 12.00,  batchQty: 10,   batchUnit: "yard",  unitCost: 1.20,  quantityOnHand: 0, minOrderQty: 10, minOrderUnit: "yard",  supplier: "Alibaba" },
+  { itemNumber: "104AB", name: "Diamond Yellow AB Gem",            category: "rhinestone", availableColours: ["Yellow", "AB (Aurora Borealis)"], batchPrice: 30.00,  batchQty: 200,  batchUnit: "bag",   unitCost: 0.15,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "McDonald & Wang" },
+  { itemNumber: "200T",  name: "Rooster Feather",                  category: "feather",    availableColours: ["Multi / Mixed"],                 batchPrice: 4.00,   batchQty: 1,    batchUnit: "metre", unitCost: 4.00,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "metre", supplier: "Alibaba" },
+  { itemNumber: "201S",  name: "Ostrich Plumes",                   category: "feather",    availableColours: ["Multi / Mixed"],                 batchPrice: 3.50,   batchQty: 1,    batchUnit: "piece", unitCost: 3.50,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "piece", supplier: "McDonald & Wang" },
+  { itemNumber: "500",   name: "Glue Sticks",                      category: "glue",       availableColours: [],                                batchPrice: 30.00,  batchQty: 1,    batchUnit: "lb",    unitCost: 30.00, quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "lb",    supplier: "McDonald & Wang" },
+  { itemNumber: "003AB", name: "30x40 Rectangle Gems",             category: "rhinestone", availableColours: ["AB (Aurora Borealis)"],           batchPrice: 7.00,   batchQty: 50,   batchUnit: "bag",   unitCost: 0.14,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Alibaba" },
+  { itemNumber: "004AB", name: "16x30mm Gold Tear Drop Gems",      category: "gem",        availableColours: ["Gold"],                          batchPrice: 10.00,  batchQty: 200,  batchUnit: "bag",   unitCost: 0.05,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Alibaba" },
+  { itemNumber: "005AB", name: "Flat Back Resin Gems (Bulk)",      category: "rhinestone", availableColours: ["Multi / Mixed"],                 batchPrice: 420.00, batchQty: 1000, batchUnit: "bag",   unitCost: 0.42,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Alibaba" },
+  { itemNumber: "006AB", name: "17x28 Iridescent Tear Drop Gems",  category: "rhinestone", availableColours: ["Iridescent"],                   batchPrice: 10.00,  batchQty: 200,  batchUnit: "bag",   unitCost: 0.05,  quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Alibaba" },
+  { itemNumber: "007",   name: "Unnamed Gem (Shein)",               category: "gem",        availableColours: [],                                batchPrice: 0,      batchQty: 1,    batchUnit: "bag",   unitCost: 0,     quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Shein",           supplierLink: "https://share.temu.com/BZFIpiuggjA" },
+  { itemNumber: "008",   name: "Unnamed Gem (John Bead)",           category: "gem",        availableColours: [],                                batchPrice: 0,      batchQty: 1,    batchUnit: "bag",   unitCost: 0,     quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "John Bead",       supplierLink: null },
+  { itemNumber: "009",   name: "Unnamed Gem (Temu)",                category: "gem",        availableColours: [],                                batchPrice: 0,      batchQty: 1,    batchUnit: "bag",   unitCost: 0,     quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Temu",            supplierLink: "https://share.temu.com/A2bR0q7nXdA" },
+  { itemNumber: "010",   name: "Unnamed Gem (Temu 2)",              category: "gem",        availableColours: [],                                batchPrice: 0,      batchQty: 1,    batchUnit: "bag",   unitCost: 0,     quantityOnHand: 0, minOrderQty: 1,  minOrderUnit: "bag",   supplier: "Temu",            supplierLink: "https://share.temu.com/HV3ITX0pLLA" },
 ];
 
 export async function seedGemSupplies(): Promise<void> {
-  const snap = await getDocs(collection(db, "gemSupplies"));
-  if (!snap.empty) return;
+  // Use a dedicated flag document to prevent race-condition double-seeding
+  const flagRef = doc(db, "seeds", "gemSupplies");
+  const flag = await getDoc(flagRef);
+  if (flag.exists()) return;
+  // Write the flag first so a concurrent call bails out
+  await setDoc(flagRef, { seededAt: serverTimestamp() });
   await Promise.all(
     SEED_SUPPLIES.map(s =>
       addDoc(collection(db, "gemSupplies"), {
         ...s,
-        supplierLink: null,
+        supplierLink: (s as Record<string, unknown>).supplierLink ?? null,
         notes: null,
         photoURL: null,
+        minOrder: null,
+        unit: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
     )
   );
+}
+
+// Remove duplicates that appeared from the race-condition double-seed.
+// Keeps the document with the earlier createdAt for each itemNumber.
+export async function deduplicateGemSupplies(): Promise<void> {
+  const snap = await getDocs(collection(db, "gemSupplies"));
+  const byItemNumber = new Map<string, { id: string; createdAt: Date }[]>();
+  snap.docs.forEach(d => {
+    const num: string = d.data().itemNumber ?? "";
+    const raw = d.data().createdAt;
+    const createdAt = raw instanceof Timestamp ? raw.toDate() : new Date(0);
+    const arr = byItemNumber.get(num) ?? [];
+    arr.push({ id: d.id, createdAt });
+    byItemNumber.set(num, arr);
+  });
+  const toDelete: string[] = [];
+  byItemNumber.forEach(entries => {
+    if (entries.length <= 1) return;
+    entries.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    entries.slice(1).forEach(e => toDelete.push(e.id));
+  });
+  await Promise.all(toDelete.map(id => deleteDoc(doc(db, "gemSupplies", id))));
 }

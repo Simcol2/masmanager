@@ -252,13 +252,21 @@ export const GemSupplySchema = z.object({
   itemNumber: z.string(),
   name: z.string().min(1),
   category: SupplyCategory,
-  availableColours: z.array(z.string()).default([]), // multiselect, e.g. ["Gold", "Silver", "Clear"]
+  availableColours: z.array(z.string()).default([]),
   photoURL: z.string().url().optional(),
-  unitCost: z.number().min(0).default(0),
+  // Batch pricing — user enters what they paid and how many came in the batch
+  batchPrice: z.number().min(0).default(0),   // e.g. $13
+  batchQty: z.number().min(0).default(1),      // e.g. 200 pieces per bag
+  batchUnit: z.string().default("bag"),         // bag / yard / piece / spool etc.
+  unitCost: z.number().min(0).default(0),       // auto: batchPrice / batchQty
   quantityOnHand: z.number().min(0).default(0),
-  unit: z.string().default("pcs"),
-  minOrder: z.string().optional(),   // e.g. "200/bag", "10 yards min"
-  supplierLink: z.string().optional(), // URL to product listing
+  // Min order
+  minOrderQty: z.number().min(0).optional(),
+  minOrderUnit: z.string().optional(),
+  // Legacy string field kept for backwards compat with old Firestore docs
+  minOrder: z.string().optional(),
+  unit: z.string().optional(),
+  supplierLink: z.string().optional(),
   supplier: z.string().optional(),
   notes: z.string().optional(),
   createdAt: z.date(),
