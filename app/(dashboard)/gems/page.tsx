@@ -381,47 +381,62 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
       </div>
 
       {/* Info */}
-      <div className="p-3 space-y-2">
+      <div style={{ padding: "0.75rem 0.75rem 0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+
+        {/* SKU + Title + Link */}
         <div>
-          <p className="text-[10px] font-mono" style={{ color: "#C084A0" }}>{gem.itemNumber}</p>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-            <p className="text-sm font-bold text-foreground leading-tight">{gem.name}</p>
+          <p style={{ fontSize: "0.6rem", fontFamily: "monospace", letterSpacing: "0.05em", color: "#C084A0", marginBottom: "0.25rem" }}>
+            {gem.itemNumber}
+          </p>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "0.35rem" }}>
+            <p className="font-display" style={{ fontSize: "0.9rem", fontWeight: 700, lineHeight: 1.25, flex: 1, color: "inherit" }}>
+              {gem.name}
+            </p>
             {gem.supplierLink && (
               <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
-                style={{ color: "#00D4B8", flexShrink: 0, lineHeight: 1 }} onClick={e => e.stopPropagation()}>
-                <Link2 style={{ width: "0.75rem", height: "0.75rem" }} />
+                style={{ color: "#00D4B8", flexShrink: 0, marginTop: "0.15rem" }} onClick={e => e.stopPropagation()}>
+                <Link2 style={{ width: "0.875rem", height: "0.875rem" }} />
               </a>
             )}
           </div>
         </div>
-        <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 rounded-md", CATEGORY_COLORS[gem.category])}>
-          {CATEGORY_LABELS[gem.category]}
-        </Badge>
-        {/* Colour pills */}
-        {gem.availableColours && gem.availableColours.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {gem.availableColours.slice(0, 3).map(c => (
-              <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full"
-                style={{ background: "rgba(0,212,184,0.1)", color: "#00D4B8", border: "1px solid rgba(0,212,184,0.2)" }}>
-                {c}
-              </span>
-            ))}
-            {gem.availableColours.length > 3 && (
-              <span className="text-[10px]" style={{ color: "#C084A0" }}>+{gem.availableColours.length - 3}</span>
-            )}
+
+        {/* Category + Colours */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+          <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 rounded-md w-fit", CATEGORY_COLORS[gem.category])}>
+            {CATEGORY_LABELS[gem.category]}
+          </Badge>
+          {gem.availableColours && gem.availableColours.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+              {gem.availableColours.slice(0, 3).map(c => (
+                <span key={c} style={{ fontSize: "0.65rem", padding: "0.1rem 0.45rem", borderRadius: "999px", background: "rgba(0,212,184,0.1)", color: "#00D4B8", border: "1px solid rgba(0,212,184,0.2)" }}>
+                  {c}
+                </span>
+              ))}
+              {gem.availableColours.length > 3 && (
+                <span style={{ fontSize: "0.65rem", color: "#C084A0" }}>+{gem.availableColours.length - 3}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Price / Stock */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "0.5rem", borderTop: "1px solid rgba(220,200,210,0.25)" }}>
+          <div style={{ lineHeight: 1 }}>
+            <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#D4AF37" }}>${gem.unitCost.toFixed(3)}</span>
+            <span style={{ fontSize: "0.65rem", color: "#C084A0" }}>/{gem.unit}</span>
           </div>
-        )}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-carnival-yellow font-semibold">${gem.unitCost.toFixed(3)}<span className="font-normal" style={{ color: "#C084A0" }}>/{gem.unit}</span></span>
-          <span className={cn("font-medium", gem.quantityOnHand <= 0 ? "text-crimson" : "text-carnival-teal")}>
+          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: gem.quantityOnHand <= 0 ? "#DC143C" : "#00D4B8" }}>
             {gem.quantityOnHand} {gem.unit}
           </span>
         </div>
+
         {gem.minOrder && (
-          <p className="text-[10px] flex items-center gap-1" style={{ color: "#C084A0" }}>
-            <ShoppingCart className="w-2.5 h-2.5" /> Min: {gem.minOrder}
+          <p style={{ fontSize: "0.65rem", display: "flex", alignItems: "center", gap: "0.25rem", color: "#C084A0", marginTop: "-0.15rem" }}>
+            <ShoppingCart style={{ width: "0.625rem", height: "0.625rem" }} /> Min: {gem.minOrder}
           </p>
         )}
+
       </div>
     </motion.div>
   );
