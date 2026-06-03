@@ -231,9 +231,9 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                 <label className="text-sm font-medium text-foreground">Category</label>
                 <Select value={category} onValueChange={v => setCategory(v as SupplyCategory)}>
                   <SelectTrigger className="luxury-input"><SelectValue /></SelectTrigger>
-                  <SelectContent style={{ background: "#0F2540", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  <SelectContent style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}>
                     {(Object.entries(CATEGORY_LABELS) as [SupplyCategory, string][]).map(([k, v]) => (
-                      <SelectItem key={k} value={k} style={{ color: "#F0F4FF" }}>{v}</SelectItem>
+                      <SelectItem key={k} value={k} style={{ color: "#1E2029" }}>{v}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -260,8 +260,8 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
               <label className="text-sm font-medium text-foreground">Unit</label>
               <Select value={unit} onValueChange={setUnit}>
                 <SelectTrigger className="luxury-input"><SelectValue /></SelectTrigger>
-                <SelectContent style={{ background: "#0F2540", border: "1px solid rgba(255,255,255,0.15)" }}>
-                  {UNITS.map(u => <SelectItem key={u} value={u} style={{ color: "#F0F4FF" }}>{u}</SelectItem>)}
+                <SelectContent style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}>
+                  {UNITS.map(u => <SelectItem key={u} value={u} style={{ color: "#1E2029" }}>{u}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -445,7 +445,7 @@ export default function GemsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="page-header">
         <div>
           <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Supplies</h1>
-          <p className="mt-1" style={{ color: "rgba(180,200,240,0.6)" }}>
+          <p className="mt-1" style={{ color: "#6B7280" }}>
             Gems, feathers, trims, fabric, frames, tools, hardware - everything you work with
           </p>
         </div>
