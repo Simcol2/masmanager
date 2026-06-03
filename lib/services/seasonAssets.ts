@@ -4,6 +4,7 @@ import {
   getDoc,
   getDocs,
   addDoc,
+  updateDoc,
   deleteDoc,
   query,
   orderBy,
@@ -48,6 +49,13 @@ export async function createSeasonAsset(
   });
   const snap = await getDoc(ref);
   return fromFirestore({ id: snap.id, ...snap.data() }) as SeasonAsset;
+}
+
+export async function renameSeasonAsset(id: string, title: string): Promise<void> {
+  await updateDoc(doc(db, "seasonAssets", id), {
+    title,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deleteSeasonAsset(id: string, fileURL?: string): Promise<void> {

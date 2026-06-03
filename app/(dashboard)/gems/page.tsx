@@ -212,13 +212,13 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
   const [category, setCategory] = useState<SupplyCategory>(gem?.category ?? "rhinestone");
   const [shape, setShape] = useState(gem?.shape ?? "");
   const [availableColours, setAvailableColours] = useState<string[]>(gem?.availableColours ?? []);
-  // Cost: "$X for Y <unit>"
-  const [costAmount, setCostAmount] = useState(gem?.costAmount ?? 0);
-  const [costQty, setCostQty]       = useState(gem?.costQty ?? 1);
+  // Cost: "$X for Y <unit>" — stored as strings so backspace/clearing works naturally
+  const [costAmount, setCostAmount] = useState(gem?.costAmount ? String(gem.costAmount) : "");
+  const [costQty, setCostQty]       = useState(gem?.costQty ? String(gem.costQty) : "");
   const [costUnit, setCostUnit]     = useState(gem?.costUnit ?? "pcs");
-  const [qtyOnHand, setQtyOnHand]   = useState(gem?.quantityOnHand ?? 0);
+  const [qtyOnHand, setQtyOnHand]   = useState(gem?.quantityOnHand ? String(gem.quantityOnHand) : "");
   // Min order: "N <unit>"
-  const [minOrderQty, setMinOrderQty]   = useState(gem?.minOrderQty ?? 0);
+  const [minOrderQty, setMinOrderQty]   = useState(gem?.minOrderQty ? String(gem.minOrderQty) : "");
   const [minOrderUnit, setMinOrderUnit] = useState(gem?.minOrderUnit ?? "pcs");
   const [supplierLink, setSupplierLink] = useState(gem?.supplierLink ?? "");
   const [supplier, setSupplier] = useState(gem?.supplier ?? "");
@@ -239,11 +239,11 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     setName(gem?.name ?? "");
     setCategory(gem?.category ?? "rhinestone");
     setAvailableColours(gem?.availableColours ?? []);
-    setCostAmount(gem?.costAmount ?? 0);
-    setCostQty(gem?.costQty ?? 1);
+    setCostAmount(gem?.costAmount ? String(gem.costAmount) : "");
+    setCostQty(gem?.costQty ? String(gem.costQty) : "");
     setCostUnit(gem?.costUnit ?? "pcs");
-    setQtyOnHand(gem?.quantityOnHand ?? 0);
-    setMinOrderQty(gem?.minOrderQty ?? 0);
+    setQtyOnHand(gem?.quantityOnHand ? String(gem.quantityOnHand) : "");
+    setMinOrderQty(gem?.minOrderQty ? String(gem.minOrderQty) : "");
     setMinOrderUnit(gem?.minOrderUnit ?? "pcs");
     setSupplierLink(gem?.supplierLink ?? "");
     setSupplier(gem?.supplier ?? "");
@@ -269,13 +269,15 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     if (!name.trim()) { setError("Name is required"); return; }
     setSaving(true); setError("");
     try {
-      const perPieceCost = costQty > 0 ? +(costAmount / costQty).toFixed(6) : 0;
+      const cAmt = parseFloat(costAmount) || 0;
+      const cQty = parseFloat(costQty) || 1;
+      const perPieceCost = cQty > 0 ? +(cAmt / cQty).toFixed(6) : 0;
       const payload = {
         name: name.trim(), category, shape: shape || undefined, availableColours,
-        costAmount, costQty, costUnit,
-        unitCost: perPieceCost,   // auto-calculated — used by applique builder
-        quantityOnHand: qtyOnHand,
-        minOrderQty,
+        costAmount: cAmt, costQty: cQty, costUnit,
+        unitCost: perPieceCost,
+        quantityOnHand: parseFloat(qtyOnHand) || 0,
+        minOrderQty: parseFloat(minOrderQty) || 0,
         minOrderUnit,
         supplierLink: supplierLink || undefined,
         supplier: supplier || undefined,
@@ -346,7 +348,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                 {field("Shape",
                   <select value={shape} onChange={e => setShape(e.target.value)} style={inputStyle}>
                     <option value="">— Any shape —</option>
-                    {["Round","Oval","Square","Rectangle","Teardrop","Heart","Star","Hexagon","Triangle","Navette","Pear","Marquise","Flatback","Cabochon","Baguette","Horse Eye","Irregular","Other"].map(s => (
+                    {["Round","Oval","Square","Rectangle","Diamond","Teardrop","Heart","Star","Hexagon","Triangle","Navette","Pear","Marquise","Flatback","Cabochon","Baguette","Horse Eye","Irregular","Other"].map(s => (
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
@@ -363,14 +365,14 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
               {/* "$X for Y <unit>" */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem", alignItems: "end" }}>
                 {field("Amount paid ($)",
-                  <input type="number" step="0.01" min="0" style={inputStyle} value={costAmount || ""}
+                  <input type="number" step="0.01" min="0" style={inputStyle} value={costAmount}
                     placeholder="e.g. 13"
-                    onChange={e => setCostAmount(parseFloat(e.target.value) || 0)} />
+                    onChange={e => setCostAmount(e.target.value)} />
                 )}
                 {field("Quantity covered",
-                  <input type="number" step="1" min="1" style={inputStyle} value={costQty || ""}
+                  <input type="number" step="1" min="1" style={inputStyle} value={costQty}
                     placeholder="e.g. 200"
-                    onChange={e => setCostQty(parseFloat(e.target.value) || 1)} />
+                    onChange={e => setCostQty(e.target.value)} />
                 )}
                 {field("Unit",
                   <select value={costUnit} onChange={e => setCostUnit(e.target.value)} style={inputStyle}>
@@ -379,17 +381,17 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                 )}
               </div>
               {/* Auto-calculated per-piece cost */}
-              {costAmount > 0 && costQty > 0 && (
+              {parseFloat(costAmount) > 0 && parseFloat(costQty) > 0 && (
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", borderRadius: "0.625rem", background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
                   <span style={{ fontSize: "0.8rem", color: "#1D4ED8" }}>
                     Individual piece cost:
                     <strong style={{ marginLeft: "0.35rem", fontSize: "0.9rem" }}>
-                      ${(costAmount / costQty).toFixed(4)}
+                      ${(parseFloat(costAmount) / parseFloat(costQty)).toFixed(4)}
                     </strong>
                     <span style={{ color: "#93C5FD", marginLeft: "0.25rem" }}>per piece</span>
                   </span>
                   <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "#60A5FA" }}>
-                    ${costAmount.toFixed(2)} ÷ {costQty} {costUnit}
+                    ${parseFloat(costAmount).toFixed(2)} ÷ {costQty} {costUnit}
                   </span>
                 </div>
               )}
@@ -398,9 +400,9 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
               </div>
               {/* Qty on hand */}
               {field("Quantity on Hand",
-                <input type="number" min="0" style={inputStyle} value={qtyOnHand || ""}
+                <input type="number" min="0" style={inputStyle} value={qtyOnHand}
                   placeholder="How many do you have?"
-                  onChange={e => setQtyOnHand(parseFloat(e.target.value) || 0)} />
+                  onChange={e => setQtyOnHand(e.target.value)} />
               )}
             </div>
 
@@ -408,9 +410,9 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               {field("Min. Order",
                 <div style={{ display: "flex", gap: "0.4rem" }}>
-                  <input type="number" min="0" step="1" style={{ ...inputStyle, flex: 1 }} value={minOrderQty || ""}
+                  <input type="number" min="0" step="1" style={{ ...inputStyle, flex: 1 }} value={minOrderQty}
                     placeholder="e.g. 3"
-                    onChange={e => setMinOrderQty(parseFloat(e.target.value) || 0)} />
+                    onChange={e => setMinOrderQty(e.target.value)} />
                   <select value={minOrderUnit} onChange={e => setMinOrderUnit(e.target.value)}
                     style={{ ...inputStyle, width: "auto", flexShrink: 0 }}>
                     {COST_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
@@ -507,17 +509,106 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
   );
 }
 
+// ── Supply detail popup ───────────────────────────────────────────────────────
+function GemDetailDialog({ gem, open, onClose, onEdit }: {
+  gem: GemSupply; open: boolean; onClose: () => void; onEdit: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent style={{ maxWidth: "28rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {/* Photo */}
+          {gem.photoURL && (
+            <div style={{ aspectRatio: "1 / 1", width: "100%", borderRadius: "0.875rem", overflow: "hidden", background: "#F9FAFB", position: "relative" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+          )}
+          {/* Header */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+              <span style={{ fontSize: "0.65rem", fontFamily: "monospace", color: "#9CA3AF" }}>{gem.itemNumber}</span>
+              <span style={{ fontSize: "0.7rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: "0.35rem", background: CATEGORY_BG[gem.category], color: CATEGORY_COLOR[gem.category] }}>
+                {CATEGORY_LABELS[gem.category]}
+              </span>
+              {gem.shape && <span style={{ fontSize: "0.7rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: "0.35rem", background: "#EFF6FF", color: "#1D4ED8" }}>{gem.shape}</span>}
+            </div>
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>{gem.name}</h2>
+          </div>
+          {/* Pricing */}
+          <div style={{ background: "#F9FAFB", borderRadius: "0.75rem", padding: "0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {gem.costAmount > 0 && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+                  <span style={{ color: "#6B7280" }}>Cost</span>
+                  <span style={{ fontWeight: 700, color: "#1E2029" }}>${gem.costAmount.toFixed(2)} / {gem.costQty} {gem.costUnit}</span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+                  <span style={{ color: "#6B7280" }}>Per piece</span>
+                  <span style={{ fontWeight: 700, color: "#D97706" }}>${gem.unitCost.toFixed(4)}</span>
+                </div>
+              </>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+              <span style={{ color: "#6B7280" }}>Qty on Hand</span>
+              <span style={{ fontWeight: 700, color: gem.quantityOnHand <= 0 ? "#DC2626" : "#16A34A" }}>{gem.quantityOnHand} {gem.costUnit}</span>
+            </div>
+            {(gem.minOrderQty ?? 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem" }}>
+                <span style={{ color: "#6B7280" }}>Min Order</span>
+                <span style={{ fontWeight: 700, color: "#1E2029" }}>{gem.minOrderQty} {gem.minOrderUnit}</span>
+              </div>
+            )}
+          </div>
+          {/* Colours */}
+          {gem.availableColours && gem.availableColours.length > 0 && (
+            <div>
+              <p style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Available Colours</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+                {gem.availableColours.map(c => (
+                  <span key={c} style={{ fontSize: "0.75rem", padding: "0.2rem 0.6rem", borderRadius: "999px", background: "rgba(0,188,212,0.08)", color: "#00838F", border: "1px solid rgba(0,188,212,0.2)" }}>{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* Supplier */}
+          {(gem.supplier || gem.supplierLink) && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.875rem" }}>
+              <span style={{ color: "#6B7280" }}>Supplier</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {gem.supplier && <span style={{ fontWeight: 600, color: "#374151" }}>{gem.supplier}</span>}
+                {gem.supplierLink && <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer" style={{ color: "#1A73E8", fontSize: "0.78rem", fontWeight: 600 }}>View listing ↗</a>}
+              </div>
+            </div>
+          )}
+          {gem.notes && <p style={{ fontSize: "0.875rem", color: "#6B7280", margin: 0 }}>{gem.notes}</p>}
+          {/* Actions */}
+          <div style={{ display: "flex", gap: "0.75rem", paddingTop: "0.25rem", borderTop: "1px solid #F3F4F6" }}>
+            <button onClick={onClose} style={{ flex: 1, padding: "0.6rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>Close</button>
+            <button onClick={() => { onClose(); onEdit(); }} style={{ flex: 2, padding: "0.6rem", borderRadius: "0.75rem", border: "none", background: "#1A73E8", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+              <Pencil style={{ width: "0.875rem", height: "0.875rem" }} /> Edit Item
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Supply card ───────────────────────────────────────────────────────────────
 function SupplyCard({ gem, onEdit, onDelete, index }: {
   gem: GemSupply; onEdit: () => void; onDelete: () => void; index: number;
 }) {
+  const [detailOpen, setDetailOpen] = useState(false);
   return (
+    <>
+    <GemDetailDialog gem={gem} open={detailOpen} onClose={() => setDetailOpen(false)} onEdit={onEdit} />
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}
       style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}
     >
-      {/* Photo — 1:1 square */}
-      <div style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {/* Photo — 1:1 square, clickable to open detail */}
+      <div onClick={() => setDetailOpen(true)} style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
         {gem.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
@@ -527,6 +618,10 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
             <span style={{ fontSize: "0.65rem" }}>No photo</span>
           </div>
         )}
+        {/* Click hint overlay */}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)", transition: "background 0.15s", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.12)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,0,0,0)")} />
       </div>
 
       {/* Info */}
@@ -600,11 +695,15 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
         )}
       </div>
 
-      {/* Always-visible action bar */}
+      {/* Action bar */}
       <div style={{ display: "flex", borderTop: "1px solid #F3F4F6", padding: "0.35rem 0.5rem", gap: "0.35rem" }}>
+        <button onClick={() => setDetailOpen(true)}
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", fontSize: "0.7rem", fontWeight: 600, color: "#374151", background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "0.5rem", padding: "0.3rem", cursor: "pointer" }}>
+          <Gem style={{ width: "0.65rem", height: "0.65rem" }} /> Details
+        </button>
         <button onClick={onEdit}
-          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", fontSize: "0.7rem", fontWeight: 600, color: "#1A73E8", background: "rgba(26,115,232,0.07)", border: "1px solid rgba(26,115,232,0.2)", borderRadius: "0.5rem", padding: "0.3rem", cursor: "pointer" }}>
-          <Pencil style={{ width: "0.65rem", height: "0.65rem" }} /> Edit
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.3rem 0.5rem", color: "#1A73E8", background: "rgba(26,115,232,0.07)", border: "1px solid rgba(26,115,232,0.2)", borderRadius: "0.5rem", cursor: "pointer" }}>
+          <Pencil style={{ width: "0.65rem", height: "0.65rem" }} />
         </button>
         <button onClick={onDelete}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.3rem 0.5rem", color: "#DC2626", background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: "0.5rem", cursor: "pointer" }}>
@@ -612,6 +711,7 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
         </button>
       </div>
     </motion.div>
+    </>
   );
 }
 

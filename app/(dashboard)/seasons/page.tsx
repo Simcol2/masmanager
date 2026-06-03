@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
+// import { Button } from "@/components/ui/button"; // removed — using inline buttons
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   CalendarDays, Users, Sparkles, ChevronDown, ChevronUp,
   Plus, X, Check, Loader2, ChevronRight, Upload, Download, FileText, ImageIcon,
+  Pencil,
 } from "lucide-react";
 import {
   type CostumeType, CostumeTypeLabels,
@@ -17,7 +18,7 @@ import {
   getMasterPieces, seedDefaultPieces,
   upsertSeasonPieceConfig, getSeasonPieceConfigs, deleteSeasonPieceConfig,
 } from "@/lib/services/pieces";
-import { getSeasonAssets, createSeasonAsset, deleteSeasonAsset } from "@/lib/services/seasonAssets";
+import { getSeasonAssets, createSeasonAsset, deleteSeasonAsset, renameSeasonAsset } from "@/lib/services/seasonAssets";
 import { uploadSeasonAsset } from "@/lib/services/storage";
 import { getRegistrations, seedRegistrations } from "@/lib/services/registrations";
 
@@ -41,11 +42,6 @@ const APPLIQUES_2026 = [
   { name: "Gold Pointy Half Pearl", color: "Gold", usedOn: ["Necklace"] },
 ];
 
-const SEASON_ASSET_CATEGORIES: { key: SeasonAssetCategory; label: string; accept: string }[] = [
-  { key: "costume_style_photo", label: "Style Photo", accept: "image/*" },
-  { key: "season_logo", label: "Season Logo", accept: "image/*" },
-  { key: "marketing_asset", label: "Marketing Asset", accept: "*/*" },
-];
 
 const COSTUME_ORDER: CostumeType[] = [
   "girls_backline", "boys_backline", "toddler_frontline",
@@ -455,6 +451,185 @@ function CostumeCard({ costumeType, count, index, onViewDetails, stylePhotoURL, 
   );
 }
 
+// ── Asset Hub Folder definitions ─────────────────────────────────────────────
+const ASSET_FOLDERS: { key: string; label: string; color: string; emoji: string }[] = [
+  { key: "instagram",         label: "Instagram",          color: "#E1306C", emoji: "📸" },
+  { key: "website",           label: "Website",            color: "#1A73E8", emoji: "🌐" },
+  { key: "binder",            label: "Binder",             color: "#FF6B35", emoji: "📁" },
+  { key: "models_photoshoot", label: "Models Photoshoot",  color: "#673AB7", emoji: "💃" },
+  { key: "email_templates",   label: "Email Templates",    color: "#00BCD4", emoji: "✉️" },
+  { key: "costume_templates", label: "Costume Templates",  color: "#FF006E", emoji: "👗" },
+  { key: "miscellaneous",     label: "Miscellaneous",      color: "#6B7280", emoji: "📎" },
+];
+
+function isImage(url: string, name: string) {
+  return /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(name) || url.includes("token=");
+}
+
+function AssetHub({ seasonId, assets, uploading, uploadPct, error, uploadingCategory, onStartUpload, onDelete, onRename, deletingId }: {
+  seasonId: string;
+  assets: SeasonAsset[];
+  uploading: boolean;
+  uploadPct: number;
+  error: string | null;
+  uploadingCategory: string | null;
+  onStartUpload: (cat: string) => void;
+  onDelete: (id: string, url?: string) => void;
+  onRename: (id: string, title: string) => void;
+  deletingId: string | null;
+}) {
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
+  function toggleFolder(key: string) {
+    setOpenFolders(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function startRename(asset: SeasonAsset) {
+    setRenamingId(asset.id);
+    setRenameValue(asset.title);
+  }
+
+  function commitRename(id: string) {
+    if (renameValue.trim()) onRename(id, renameValue.trim());
+    setRenamingId(null);
+  }
+
+  return (
+    <section style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div>
+          <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>Season Asset Hub</h2>
+          <p style={{ fontSize: "0.82rem", color: "#6B7280", margin: "0.2rem 0 0" }}>
+            All your {seasonId} season files — photos, templates, marketing materials
+          </p>
+        </div>
+        {uploading && (
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#1A73E8", fontSize: "0.82rem", fontWeight: 600 }}>
+            <Loader2 style={{ width: "0.9rem", height: "0.9rem" }} className="animate-spin" />
+            Uploading {uploadPct}%
+          </div>
+        )}
+        {error && <p style={{ fontSize: "0.82rem", color: "#DC2626", margin: 0 }}>{error}</p>}
+      </div>
+
+      {/* Folder list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {ASSET_FOLDERS.map(folder => {
+          const folderAssets = assets.filter(a => a.category === folder.key);
+          const isOpen = !!openFolders[folder.key];
+          const isUploading = uploadingCategory === folder.key && uploading;
+          return (
+            <div key={folder.key} style={{ border: "1px solid #E5E7EB", borderRadius: "0.875rem", overflow: "hidden" }}>
+              {/* Folder header */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 1rem", background: isOpen ? "#F9FAFB" : "#FFFFFF", cursor: "pointer" }}
+                onClick={() => toggleFolder(folder.key)}>
+                <span style={{ fontSize: "1.2rem" }}>{folder.emoji}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1E2029", margin: 0 }}>{folder.label}</p>
+                  <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{folderAssets.length} file{folderAssets.length !== 1 ? "s" : ""}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); onStartUpload(folder.key); }}
+                  disabled={isUploading}
+                  style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.75rem", fontWeight: 600, padding: "0.35rem 0.75rem", borderRadius: "0.5rem", border: `1.5px solid ${folder.color}30`, background: `${folder.color}08`, color: folder.color, cursor: "pointer", flexShrink: 0 }}>
+                  {isUploading ? <Loader2 style={{ width: "0.75rem", height: "0.75rem" }} className="animate-spin" /> : <Upload style={{ width: "0.75rem", height: "0.75rem" }} />}
+                  Upload
+                </button>
+                {isOpen
+                  ? <ChevronUp style={{ width: "1rem", height: "1rem", color: "#9CA3AF", flexShrink: 0 }} />
+                  : <ChevronDown style={{ width: "1rem", height: "1rem", color: "#9CA3AF", flexShrink: 0 }} />
+                }
+              </div>
+
+              {/* Folder contents — 1:1 grid */}
+              {isOpen && (
+                <div style={{ padding: "0.75rem", borderTop: "1px solid #F3F4F6", background: "#FAFAFA" }}>
+                  {folderAssets.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => onStartUpload(folder.key)}
+                      style={{ width: "100%", padding: "2rem", border: "2px dashed #E5E7EB", borderRadius: "0.75rem", background: "#FFFFFF", color: "#9CA3AF", fontSize: "0.875rem", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                      <Upload style={{ width: "1.5rem", height: "1.5rem" }} />
+                      No files yet — click to upload
+                    </button>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: "0.6rem" }}>
+                      {folderAssets.map(asset => {
+                        const img = isImage(asset.fileURL, asset.fileName);
+                        return (
+                          <div key={asset.id} style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "0.75rem", overflow: "hidden" }}>
+                            {/* 1:1 preview */}
+                            <a href={asset.fileURL} target="_blank" rel="noopener noreferrer"
+                              style={{ display: "block", aspectRatio: "1 / 1", position: "relative", background: "#F3F4F6", overflow: "hidden" }}>
+                              {img ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={asset.fileURL} alt={asset.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                              ) : (
+                                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
+                                  <FileText style={{ width: "2rem", height: "2rem", color: folder.color }} />
+                                  <span style={{ fontSize: "0.6rem", color: "#9CA3AF", padding: "0 0.5rem", textAlign: "center" }}>
+                                    {asset.fileName.split(".").pop()?.toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                            </a>
+                            {/* Name + actions */}
+                            <div style={{ padding: "0.4rem 0.5rem" }}>
+                              {renamingId === asset.id ? (
+                                <div style={{ display: "flex", gap: "0.25rem" }}>
+                                  <input
+                                    autoFocus
+                                    value={renameValue}
+                                    onChange={e => setRenameValue(e.target.value)}
+                                    onKeyDown={e => { if (e.key === "Enter") commitRename(asset.id); if (e.key === "Escape") setRenamingId(null); }}
+                                    style={{ flex: 1, fontSize: "0.7rem", padding: "0.2rem 0.35rem", border: "1.5px solid #1A73E8", borderRadius: "0.35rem", outline: "none", minWidth: 0 }}
+                                  />
+                                  <button type="button" onClick={() => commitRename(asset.id)}
+                                    style={{ background: "#1A73E8", border: "none", borderRadius: "0.35rem", cursor: "pointer", padding: "0.2rem 0.35rem", color: "#fff", display: "flex" }}>
+                                    <Check style={{ width: "0.65rem", height: "0.65rem" }} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: "0.7rem", fontWeight: 600, color: "#374151", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {asset.title}
+                                </p>
+                              )}
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.2rem", marginTop: "0.25rem" }}>
+                                <button type="button" title="Rename" onClick={() => startRename(asset)}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.1rem", display: "flex" }}>
+                                  <Pencil style={{ width: "0.65rem", height: "0.65rem" }} />
+                                </button>
+                                <a href={asset.fileURL} target="_blank" rel="noopener noreferrer" title="Open/Download"
+                                  style={{ color: "#9CA3AF", display: "flex", padding: "0.1rem" }}>
+                                  <Download style={{ width: "0.65rem", height: "0.65rem" }} />
+                                </a>
+                                <button type="button" title="Delete" onClick={() => onDelete(asset.id, asset.fileURL)}
+                                  disabled={deletingId === asset.id}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.1rem", display: "flex", marginLeft: "auto" }}>
+                                  {deletingId === asset.id
+                                    ? <Loader2 style={{ width: "0.65rem", height: "0.65rem" }} className="animate-spin" />
+                                    : <X style={{ width: "0.65rem", height: "0.65rem" }} />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function SeasonsPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>("2026");
@@ -500,9 +675,9 @@ export default function SeasonsPage() {
   const totalRegistrations = registrations.length;
   const activeTypes = COSTUME_ORDER.filter(c => registrations.some(r => r.costumeType === c)).length;
 
-  function startAssetUpload(category: SeasonAssetCategory, costumeType?: CostumeType) {
+  function startAssetUpload(category: string, costumeType?: CostumeType) {
     setAssetError(null);
-    setSelectedAssetCategory(category);
+    setSelectedAssetCategory(category as SeasonAssetCategory);
     setStylePhotoCostumeType(costumeType ?? null);
     fileInputRef.current?.click();
   }
@@ -607,97 +782,6 @@ export default function SeasonsPage() {
             </div>
           </motion.div>
 
-          {/* Season asset upload hub */}
-          <section style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-              <div>
-                <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1E2029", margin: 0 }}>Season Asset Hub</h2>
-                <p style={{ fontSize: "0.875rem", color: "#6B7280", margin: "0.45rem 0 0" }}>
-                  Upload costume style photos, season logos, and marketing assets for {selectedSeason}.
-                </p>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
-                {SEASON_ASSET_CATEGORIES.map(category => (
-                  <Button
-                    key={category.key}
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => startAssetUpload(category.key)}
-                    disabled={assetUploading}
-                    style={{ minWidth: "12rem" }}>
-                    <Upload style={{ width: "1rem", height: "1rem" }} />
-                    {category.label}
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              hidden
-              accept={SEASON_ASSET_CATEGORIES.find(c => c.key === selectedAssetCategory)?.accept ?? "*/*"}
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) handleSeasonAssetSelected(file);
-                e.target.value = "";
-              }}
-            />
-            {assetUploading && (
-              <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.5rem", color: "#1D4ED8" }}>
-                <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} />
-                Uploading asset — {assetUploadPct}%
-              </div>
-            )}
-            {assetError && (
-              <div style={{ marginTop: "1rem", padding: "0.75rem", borderRadius: "0.75rem", background: "#FEF2F2", color: "#B91C1C" }}>
-                {assetError}
-              </div>
-            )}
-            <div style={{ marginTop: "1.25rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
-              {assets.length === 0 ? (
-                <div style={{ padding: "1rem", background: "#F8FAFC", border: "1px dashed #D1D5DB", borderRadius: "0.75rem", color: "#6B7280" }}>
-                  No season assets uploaded yet. Use the buttons above to upload photos or files.
-                </div>
-              ) : assets.map(asset => (
-                <div key={asset.id} style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "0.75rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
-                    <div>
-                      <p style={{ fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>{asset.title}</p>
-                      <p style={{ fontSize: "0.75rem", color: "#6B7280", margin: "0.25rem 0 0" }}>
-                        {SEASON_ASSET_CATEGORIES.find(c => c.key === asset.category)?.label ?? asset.category}
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <a
-                        href={asset.fileURL}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", fontWeight: 600, color: "#1D4ED8" }}>
-                        <Download style={{ width: "0.9rem", height: "0.9rem" }} />
-                        Open
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAsset(asset.id, asset.fileURL)}
-                        disabled={deletingAssetId === asset.id}
-                        style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", fontWeight: 600, color: "#DC2626", background: "none", border: "none", cursor: "pointer" }}>
-                        {deletingAssetId === asset.id ? (
-                          <Loader2 className="animate-spin" style={{ width: "0.9rem", height: "0.9rem" }} />
-                        ) : (
-                          <FileText style={{ width: "0.9rem", height: "0.9rem" }} />
-                        )}
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  <p style={{ fontSize: "0.75rem", color: "#475569", margin: 0 }}>
-                    {asset.fileName}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
           {/* Costume grid */}
           <div>
             <h2 style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", marginBottom: "1rem" }}>
@@ -744,6 +828,37 @@ export default function SeasonsPage() {
 
         </motion.div>
       </AnimatePresence>
+
+      {/* ── Asset Hub ───────────────────────────────────────────────────── */}
+      <AssetHub
+        seasonId={selectedSeason}
+        assets={assets.filter(a => a.category !== "costume_style_photo")}
+        uploading={assetUploading}
+        uploadPct={assetUploadPct}
+        error={assetError}
+        uploadingCategory={selectedAssetCategory}
+        onStartUpload={startAssetUpload}
+        onDelete={handleDeleteAsset}
+        onRename={(id, title) => {
+          renameSeasonAsset(id, title).then(() =>
+            setAssets(prev => prev.map(a => a.id === id ? { ...a, title } : a))
+          ).catch(console.error);
+        }}
+        deletingId={deletingAssetId}
+      />
+
+      {/* hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        style={{ display: "none" }}
+        accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.csv"
+        onChange={e => {
+          const file = e.target.files?.[0];
+          if (file) handleSeasonAssetSelected(file);
+          e.target.value = "";
+        }}
+      />
 
       {/* Costume detail dialog */}
       <CostumeDetailDialog

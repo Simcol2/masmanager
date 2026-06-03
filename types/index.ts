@@ -235,9 +235,14 @@ export const SeasonPieceConfigSchema = z.object({
 });
 
 export const SeasonAssetCategory = z.enum([
-  "costume_style_photo",
-  "season_logo",
-  "marketing_asset",
+  "costume_style_photo",   // internal — costume card photos
+  "instagram",
+  "website",
+  "binder",
+  "models_photoshoot",
+  "email_templates",
+  "costume_templates",
+  "miscellaneous",
 ]);
 
 export const SeasonAssetSchema = z.object({
@@ -245,9 +250,10 @@ export const SeasonAssetSchema = z.object({
   seasonId: z.string(),
   category: SeasonAssetCategory,
   costumeType: CostumeType.optional(),
-  title: z.string().min(1),
-  fileName: z.string().min(1),
+  title: z.string().min(1),          // display name (can be renamed)
+  fileName: z.string().min(1),       // original file name
   fileURL: z.string().url(),
+  mimeType: z.string().optional(),
   notes: z.string().optional(),
   createdAt: z.date(),
   updatedAt: z.date(),
