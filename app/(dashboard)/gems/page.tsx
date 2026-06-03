@@ -381,7 +381,7 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
           </span>
         </div>
         {gem.minOrder && (
-          <p className="text-[10px] flex items-center gap-1" style={{ color: "#C084A0" }}">
+          <p className="text-[10px] flex items-center gap-1" style={{ color: "#C084A0" }}>
             <ShoppingCart className="w-2.5 h-2.5" /> Min: {gem.minOrder}
           </p>
         )}

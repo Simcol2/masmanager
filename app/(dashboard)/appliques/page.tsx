@@ -171,7 +171,7 @@ function UsageSection({ appliqueId, appliqueName, appliqueItemNumber, masterPiec
         <div key={u.id} className="flex items-center gap-3 py-1.5 px-2 rounded-md" style={{ background: "rgba(0,212,184,0.06)", border: "1px solid rgba(0,212,184,0.1)" }}>
           <div className="flex-1 min-w-0">
             <span className="text-sm text-foreground">{u.pieceName}</span>
-            <span className="mx-1.5" style={{ color: "#C084A0" }}">·</span>
+            <span className="mx-1.5" style={{ color: "#C084A0" }}>·</span>
             <span className="text-xs" style={{ color: "#C084A0" }}>{CostumeTypeLabels[u.costumeType]}</span>
           </div>
           <span className="text-sm font-semibold text-carnival-yellow shrink-0">{u.quantityPerCostume}×</span>
@@ -185,7 +185,7 @@ function UsageSection({ appliqueId, appliqueName, appliqueItemNumber, masterPiec
         <div key={i} className="flex items-center gap-3 py-1.5 px-2 rounded-md" style={{ background: "rgba(212,175,55,0.06)", border: "1px solid rgba(212,175,55,0.15)" }}>
           <div className="flex-1 min-w-0">
             <span className="text-sm text-foreground">{u.pieceName}</span>
-            <span className="mx-1.5" style={{ color: "#C084A0" }}">·</span>
+            <span className="mx-1.5" style={{ color: "#C084A0" }}>·</span>
             <span className="text-xs" style={{ color: "#C084A0" }}>{CostumeTypeLabels[u.costumeType]}</span>
             <span className="text-xs ml-1.5" style={{ color: "#C084A0" }}>unsaved</span>
           </div>
