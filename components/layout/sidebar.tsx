@@ -16,6 +16,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Library,
+  Sparkles,
+  Gem,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -23,8 +26,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "registrar", "production"] },
-  { href: "/seasons", label: "Seasons", icon: CalendarDays, roles: ["admin"] },
+  { href: "/seasons", label: "2026 Costumes", icon: CalendarDays, roles: ["admin", "registrar", "production"] },
   { href: "/registrations", label: "Registrations", icon: Users, roles: ["admin", "registrar"] },
+  { href: "/gems", label: "Gems & Supplies", icon: Gem, roles: ["admin", "production"] },
+  { href: "/appliques", label: "Appliques", icon: Sparkles, roles: ["admin", "production"] },
   { href: "/inventory", label: "Inventory", icon: Package, roles: ["admin", "production"] },
   { href: "/production", label: "Production", icon: Hammer, roles: ["admin", "production"] },
   { href: "/parent-shirts", label: "Parent Shirts", icon: Shirt, roles: ["admin", "registrar"] },

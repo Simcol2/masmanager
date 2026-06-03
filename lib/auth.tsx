@@ -84,21 +84,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isRegistrar = user?.role === "registrar" || isAdmin;
   const isProduction = user?.role === "production" || isAdmin;
 
+  const contextValue: AuthContextType = {
+    user,
+    firebaseUser,
+    loading,
+    signIn,
+    signInWithGoogle,
+    signUp,
+    logout,
+    isAdmin,
+    isRegistrar,
+    isProduction,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        firebaseUser,
-        loading,
-        signIn,
-        signInWithGoogle,
-        signUp,
-        logout,
-        isAdmin,
-        isRegistrar,
-        isProduction,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

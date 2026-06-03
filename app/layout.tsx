@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Playfair_Display, Inter, Geist } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -26,8 +29,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${playfair.variable} ${inter.variable} font-sans`}>
+    <html lang="en" className={cn("dark", "font-sans", geist.variable)} style={{ backgroundColor: "#0A0A0C" }}>
+      <body className={`${playfair.variable} ${inter.variable} font-sans`} style={{ backgroundColor: "#0A0A0C" }}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

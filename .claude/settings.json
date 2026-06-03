@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pkill -f \"next dev\")",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:3001)",
+      "Bash(curl -s http://localhost:3001/login)",
+      "Bash(pkill -f \"next dev\" 2>/dev/null; sleep 2; npm run dev > /tmp/nextjs2.log 2>&1 & echo \"PID: $!\")"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
+    ]
+  }
+}

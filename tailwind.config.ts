@@ -57,19 +57,28 @@ const config: Config = {
           900: "#7C5800",
           950: "#4A3500",
         },
-        // Deep blacks
+        // Deep navy palette
         void: {
-          50: "#F6F6F7",
-          100: "#E2E2E4",
-          200: "#C5C5C9",
-          300: "#A1A1A8",
-          400: "#7A7A83",
-          500: "#5E5E66",
-          600: "#4A4A52",
-          700: "#3D3D44",
-          800: "#2A2A30",
-          900: "#1A1A1F",
-          950: "#0A0A0C", // Deepest black
+          50:  "#F0F4FF",
+          100: "#D6E4FF",
+          200: "#ADC8FF",
+          300: "#84A9FF",
+          400: "#6690F5",
+          500: "#4D75D9",
+          600: "#3A5BAD",
+          700: "#284480",
+          800: "#1E3A5F",
+          900: "#142847",
+          950: "#0D1B2E", // Deepest navy
+        },
+        // Carnival palette
+        carnival: {
+          pink:   "#FF6B9D",
+          coral:  "#FF8C69",
+          teal:   "#00D4B8",
+          yellow: "#FFD700",
+          purple: "#9B5DE5",
+          lime:   "#80FF44",
         },
         // Saturated accents
         crimson: "#DC143C",

@@ -11,13 +11,17 @@ import {
   Hammer,
   Shirt,
   BarChart3,
+  CalendarDays,
+  Gem,
+  Sparkles,
 } from "lucide-react";
 
 const mobileNavItems = [
   { href: "/", label: "Home", icon: LayoutDashboard, roles: ["admin", "registrar", "production"] },
+  { href: "/seasons", label: "Costumes", icon: CalendarDays, roles: ["admin", "registrar", "production"] },
   { href: "/registrations", label: "Registrations", icon: Users, roles: ["admin", "registrar"] },
-  { href: "/inventory", label: "Inventory", icon: Package, roles: ["admin", "production"] },
-  { href: "/production", label: "Production", icon: Hammer, roles: ["admin", "production"] },
+  { href: "/gems", label: "Supplies", icon: Gem, roles: ["admin", "production"] },
+  { href: "/appliques", label: "Appliques", icon: Sparkles, roles: ["admin", "production"] },
   { href: "/parent-shirts", label: "Shirts", icon: Shirt, roles: ["admin", "registrar"] },
   { href: "/reports", label: "Reports", icon: BarChart3, roles: ["admin", "registrar", "production"] },
 ];
