@@ -8,6 +8,15 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./lib/**/*.{js,ts,jsx,tsx}",
   ],
+  safelist: [
+    { pattern: /^lg:/ },
+    { pattern: /^md:/ },
+    { pattern: /^sm:/ },
+    { pattern: /^xl:/ },
+    { pattern: /^2xl:/ },
+    "lg:flex", "lg:hidden", "lg:ml-64", "lg:pb-0", "lg:col-span-2",
+    "lg:grid-cols-3", "lg:grid-cols-4", "lg:grid-cols-5", "lg:p-8",
+  ],
   theme: {
     extend: {
       colors: {
