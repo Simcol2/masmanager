@@ -230,7 +230,7 @@ function UsageSection({ appliqueId, appliqueName, appliqueItemNumber, masterPiec
       {/* Add usage row */}
       {masterPieces.length > 0 && (
         <div style={{ paddingTop: "0.5rem", borderTop: "1px solid #E5E7EB", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+          <div className="usage-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
             <Select value={costumeType} onValueChange={setCostumeType}>
               <SelectTrigger style={{ height: "2rem", fontSize: "0.875rem", border: "1.5px solid #E5E7EB", borderRadius: "0.5rem", background: "#FFFFFF", color: "#1E2029" }}>
                 <SelectValue placeholder="Costume type" />
@@ -351,7 +351,7 @@ function AppliqueFormDialog({ applique, open, onClose, onSaved, masterPieces, ge
         <div style={{ overflowY: "auto", flex: 1, padding: "1.25rem 1.5rem" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {/* Photo + Name */}
-            <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+            <div className="photo-name-row">
               <PhotoUploader currentURL={photoURL} uploading={uploading} uploadPct={uploadPct}
                 onFileSelected={handlePhoto}
                 onRemove={async () => { if (photoURL) { await deleteFileByURL(photoURL); setPhotoURL(undefined); } }} />
@@ -613,6 +613,26 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
         onOpenAutoFocus={e => e.preventDefault()}
         style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden" }}
       >
+        <style>{`
+          .applique-builder-body { display:flex; flex-direction:column; min-height:55vh; height:auto; gap:1rem; }
+          .applique-builder-left { flex:1 1 0; display:flex; flex-direction:column; border-right:none; min-width:0; }
+          .applique-builder-right { width:100%; flex-shrink:0; display:flex; flex-direction:column; background:#FAFAFA; }
+          .applique-builder-right .builder-actions { display:flex; flex-direction:column; gap:0.5rem; }
+          .applique-builder-bottom-actions { display:flex; flex-direction:column; gap:0.5rem; }
+          .usage-grid { display:grid; grid-template-columns:1fr; gap:0.5rem; }
+          .photo-name-row { display:flex; flex-direction:column; gap:1rem; align-items:flex-start; }
+          @media (min-width: 640px) {
+            .photo-name-row { flex-direction:row; align-items:flex-start; }
+            .applique-form-photo { width: min(7rem, 100%); height: 7rem; }
+          }
+          @media (min-width: 900px) {
+            .applique-builder-body { flex-direction:row; height:68vh; min-height:480px; }
+            .applique-builder-left { border-right:1px solid #F3F4F6; }
+            .applique-builder-right { width:19rem; }
+            .applique-builder-bottom-actions { flex-direction:row; justify-content:flex-end; }
+            .applique-builder-right .builder-actions { flex-direction:column; }
+          }
+        `}</style>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.25rem", borderBottom: "1px solid #F3F4F6" }}>
           <div style={{ width: "2rem", height: "2rem", borderRadius: "0.5rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -628,10 +648,10 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
         </div>
 
         {/* Two-panel body */}
-        <div style={{ display: "flex", height: "68vh", minHeight: "480px" }}>
+        <div className="applique-builder-body">
 
           {/* LEFT — Gem picker */}
-          <div style={{ flex: "1 1 0", display: "flex", flexDirection: "column", borderRight: "1px solid #F3F4F6", minWidth: 0 }}>
+          <div className="applique-builder-left" style={{ flex: "1 1 0", minWidth: 0 }}>
             <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <div style={{ position: "relative" }}>
                 <Search style={{ position: "absolute", left: "0.6rem", top: "50%", transform: "translateY(-50%)", width: "0.85rem", height: "0.85rem", color: "#9CA3AF" }} />
@@ -697,7 +717,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
           </div>
 
           {/* RIGHT — Builder panel */}
-          <div style={{ width: "19rem", flexShrink: 0, display: "flex", flexDirection: "column", background: "#FAFAFA" }}>
+          <div className="applique-builder-right">
             <div style={{ padding: "0.875rem 1rem", borderBottom: "1px solid #F3F4F6", display: "flex", flexDirection: "column", gap: "0.6rem" }}>
               <div>
                 <label style={{ fontSize: "0.73rem", fontWeight: 600, color: "#374151", display: "block", marginBottom: "0.25rem" }}>Applique Name *</label>
@@ -759,10 +779,10 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
                   {ingredients.length > 0 && <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>{ingredients.length} gem{ingredients.length !== 1 ? "s" : ""} · {ingredients.reduce((s, i) => s + i.quantity, 0)} pcs total</p>}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
+              <div className="applique-builder-bottom-actions">
                 <button type="button" onClick={onClose} style={{ flex: 1, padding: "0.55rem", borderRadius: "0.7rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer" }}>Cancel</button>
                 <button type="button" onClick={handleSave} disabled={saving || uploading || !name.trim()}
-                  style={{ flex: 2, padding: "0.55rem", borderRadius: "0.7rem", border: "none", background: name.trim() ? (isEdit ? "#1A73E8" : "#FF006E") : "#E5E7EB", color: name.trim() ? "#FFFFFF" : "#9CA3AF", fontWeight: 700, fontSize: "0.8rem", cursor: name.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
+                  style={{ flex: 1, padding: "0.55rem", borderRadius: "0.7rem", border: "none", background: name.trim() ? (isEdit ? "#1A73E8" : "#FF006E") : "#E5E7EB", color: name.trim() ? "#FFFFFF" : "#9CA3AF", fontWeight: 700, fontSize: "0.8rem", cursor: name.trim() ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
                   {saving ? <Loader2 style={{ width: "0.8rem", height: "0.8rem" }} className="animate-spin" /> : <Check style={{ width: "0.8rem", height: "0.8rem" }} />}
                   {isEdit ? "Save Changes" : "Save Applique"}
                 </button>

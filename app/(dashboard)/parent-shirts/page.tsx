@@ -8,7 +8,7 @@ import { getParentShirts, seedParentShirts, createParentShirt } from "@/lib/serv
 import type { ParentShirt } from "@/types";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"] as const;
 type Size = typeof SIZES[number];

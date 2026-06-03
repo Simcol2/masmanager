@@ -70,6 +70,21 @@ export async function uploadSeasonPiecePhoto(
 }
 
 /**
+ * Upload any season asset such as a style photo, logo, or marketing file.
+ * Files are stored at seasonAssets/{seasonId}/{category}/{timestamp}_{filename}
+ */
+export async function uploadSeasonAsset(
+  seasonId: string,
+  category: string,
+  file: File,
+  onProgress?: UploadProgress
+): Promise<string> {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const path = `seasonAssets/${seasonId}/${category}/${Date.now()}_${safeName}`;
+  return uploadFile(path, file, onProgress);
+}
+
+/**
  * Delete a file from Firebase Storage by its full URL.
  */
 export async function deleteFileByURL(url: string): Promise<void> {

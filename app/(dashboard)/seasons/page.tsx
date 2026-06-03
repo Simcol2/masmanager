@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   CalendarDays, Users, Sparkles, ChevronDown, ChevronUp,
-  Plus, X, Check, Loader2, ChevronRight,
+  Plus, X, Check, Loader2, ChevronRight, Upload, Download, FileText, ImageIcon,
 } from "lucide-react";
 import {
   type CostumeType, CostumeTypeLabels,
   type MasterPiece, type SeasonPieceConfig, type Registration,
+  type SeasonAsset, SeasonAssetCategory,
 } from "@/types";
 import {
   getMasterPieces, seedDefaultPieces,
   upsertSeasonPieceConfig, getSeasonPieceConfigs, deleteSeasonPieceConfig,
 } from "@/lib/services/pieces";
+import { getSeasonAssets, createSeasonAsset, deleteSeasonAsset } from "@/lib/services/seasonAssets";
+import { uploadSeasonAsset } from "@/lib/services/storage";
 import { getRegistrations, seedRegistrations } from "@/lib/services/registrations";
 
 const SEASONS = ["2026"] as const;
@@ -36,6 +39,12 @@ const APPLIQUES_2026 = [
   { name: "Rectangle Hot Fix Trim", color: "Gold", usedOn: ["Chest Piece", "Belt"] },
   { name: "Gold Half Pearl Trim", color: "Gold", usedOn: ["Belt", "Necklace"] },
   { name: "Gold Pointy Half Pearl", color: "Gold", usedOn: ["Necklace"] },
+];
+
+const SEASON_ASSET_CATEGORIES: { key: SeasonAssetCategory; label: string; accept: string }[] = [
+  { key: "costume_style_photo", label: "Style Photo", accept: "image/*" },
+  { key: "season_logo", label: "Season Logo", accept: "image/*" },
+  { key: "marketing_asset", label: "Marketing Asset", accept: "*/*" },
 ];
 
 const COSTUME_ORDER: CostumeType[] = [
@@ -349,10 +358,12 @@ function CostumeDetailDialog({
 }
 
 // ── Costume card ─────────────────────────────────────────────────────────────
-function CostumeCard({ costumeType, count, index, onViewDetails }: {
+function CostumeCard({ costumeType, count, index, onViewDetails, stylePhotoURL, onUploadStylePhoto }: {
   costumeType: CostumeType;
   count: number;
   index: number;
+  stylePhotoURL?: string;
+  onUploadStylePhoto: () => void;
   onViewDetails: () => void;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -410,6 +421,26 @@ function CostumeCard({ costumeType, count, index, onViewDetails }: {
           </>
         )}
 
+        <div style={{ marginBottom: "0.875rem" }}>
+          <div style={{ height: "10rem", overflow: "hidden", borderRadius: "0.85rem", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {stylePhotoURL ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={stylePhotoURL} alt={`${CostumeTypeLabels[costumeType]} style`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.35rem", color: "#9CA3AF" }}>
+                <ImageIcon style={{ width: "1.4rem", height: "1.4rem" }} />
+                <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>No style photo</span>
+                <span style={{ fontSize: "0.72rem" }}>Add a costume image</span>
+              </div>
+            )}
+          </div>
+          <button type="button" onClick={onUploadStylePhoto}
+            style={{ marginTop: "0.85rem", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem", padding: "0.7rem 0.85rem", borderRadius: "0.75rem", border: "1px solid #E5E7EB", background: "#FFFFFF", color: "#1D4ED8", fontWeight: 700, cursor: "pointer" }}>
+            <Upload style={{ width: "0.85rem", height: "0.85rem" }} />
+            {stylePhotoURL ? "Replace photo" : "Upload photo"}
+          </button>
+        </div>
+
         {/* View details button */}
         <button
           onClick={onViewDetails}
@@ -429,6 +460,14 @@ export default function SeasonsPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>("2026");
   const [detailType, setDetailType] = useState<CostumeType | null>(null);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [assets, setAssets] = useState<SeasonAsset[]>([]);
+  const [selectedAssetCategory, setSelectedAssetCategory] = useState<SeasonAssetCategory | null>(null);
+  const [stylePhotoCostumeType, setStylePhotoCostumeType] = useState<CostumeType | null>(null);
+  const [assetUploading, setAssetUploading] = useState(false);
+  const [assetUploadPct, setAssetUploadPct] = useState(0);
+  const [assetError, setAssetError] = useState<string | null>(null);
+  const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -440,8 +479,78 @@ export default function SeasonsPage() {
     return () => { cancelled = true; };
   }, [selectedSeason]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setAssets([]);
+
+    getSeasonAssets(selectedSeason)
+      .then(data => { if (!cancelled) setAssets(data); })
+      .catch(console.error);
+
+    return () => { cancelled = true; };
+  }, [selectedSeason]);
+
+  const stylePhotoMap = assets.reduce<Record<CostumeType, SeasonAsset>>((acc, asset) => {
+    if (asset.category === "costume_style_photo" && asset.costumeType) {
+      acc[asset.costumeType] = asset;
+    }
+    return acc;
+  }, {} as Record<CostumeType, SeasonAsset>);
+
   const totalRegistrations = registrations.length;
   const activeTypes = COSTUME_ORDER.filter(c => registrations.some(r => r.costumeType === c)).length;
+
+  function startAssetUpload(category: SeasonAssetCategory, costumeType?: CostumeType) {
+    setAssetError(null);
+    setSelectedAssetCategory(category);
+    setStylePhotoCostumeType(costumeType ?? null);
+    fileInputRef.current?.click();
+  }
+
+  async function handleSeasonAssetSelected(file?: File) {
+    if (!selectedAssetCategory || !file || !selectedSeason) return;
+
+    setAssetUploading(true);
+    setAssetUploadPct(0);
+    setAssetError(null);
+
+    try {
+      const fileURL = await uploadSeasonAsset(selectedSeason, selectedAssetCategory, file, setAssetUploadPct);
+      const assetPayload: Omit<SeasonAsset, "id" | "createdAt" | "updatedAt"> = {
+        seasonId: selectedSeason,
+        category: selectedAssetCategory,
+        title: file.name,
+        fileName: file.name,
+        fileURL,
+      };
+      if (selectedAssetCategory === "costume_style_photo" && stylePhotoCostumeType) {
+        assetPayload.costumeType = stylePhotoCostumeType;
+      }
+      const asset = await createSeasonAsset(assetPayload);
+      setAssets(prev => [asset, ...prev]);
+    } catch (error) {
+      console.error(error);
+      setAssetError("Upload failed. Please try again.");
+    } finally {
+      setAssetUploading(false);
+      setSelectedAssetCategory(null);
+      setStylePhotoCostumeType(null);
+      setAssetUploadPct(0);
+    }
+  }
+
+  async function handleDeleteAsset(id: string, fileURL?: string) {
+    setDeletingAssetId(id);
+    try {
+      await deleteSeasonAsset(id, fileURL);
+      setAssets(prev => prev.filter(asset => asset.id !== id));
+    } catch (error) {
+      console.error(error);
+      setAssetError("Unable to delete asset. Please try again.");
+    } finally {
+      setDeletingAssetId(null);
+    }
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -498,6 +607,97 @@ export default function SeasonsPage() {
             </div>
           </motion.div>
 
+          {/* Season asset upload hub */}
+          <section style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
+              <div>
+                <h2 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1E2029", margin: 0 }}>Season Asset Hub</h2>
+                <p style={{ fontSize: "0.875rem", color: "#6B7280", margin: "0.45rem 0 0" }}>
+                  Upload costume style photos, season logos, and marketing assets for {selectedSeason}.
+                </p>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+                {SEASON_ASSET_CATEGORIES.map(category => (
+                  <Button
+                    key={category.key}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => startAssetUpload(category.key)}
+                    disabled={assetUploading}
+                    style={{ minWidth: "12rem" }}>
+                    <Upload style={{ width: "1rem", height: "1rem" }} />
+                    {category.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              hidden
+              accept={SEASON_ASSET_CATEGORIES.find(c => c.key === selectedAssetCategory)?.accept ?? "*/*"}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) handleSeasonAssetSelected(file);
+                e.target.value = "";
+              }}
+            />
+            {assetUploading && (
+              <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "0.5rem", color: "#1D4ED8" }}>
+                <Loader2 className="animate-spin" style={{ width: "1rem", height: "1rem" }} />
+                Uploading asset — {assetUploadPct}%
+              </div>
+            )}
+            {assetError && (
+              <div style={{ marginTop: "1rem", padding: "0.75rem", borderRadius: "0.75rem", background: "#FEF2F2", color: "#B91C1C" }}>
+                {assetError}
+              </div>
+            )}
+            <div style={{ marginTop: "1.25rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
+              {assets.length === 0 ? (
+                <div style={{ padding: "1rem", background: "#F8FAFC", border: "1px dashed #D1D5DB", borderRadius: "0.75rem", color: "#6B7280" }}>
+                  No season assets uploaded yet. Use the buttons above to upload photos or files.
+                </div>
+              ) : assets.map(asset => (
+                <div key={asset.id} style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "0.75rem", padding: "1rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem" }}>
+                    <div>
+                      <p style={{ fontSize: "0.9rem", fontWeight: 700, margin: 0 }}>{asset.title}</p>
+                      <p style={{ fontSize: "0.75rem", color: "#6B7280", margin: "0.25rem 0 0" }}>
+                        {SEASON_ASSET_CATEGORIES.find(c => c.key === asset.category)?.label ?? asset.category}
+                      </p>
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <a
+                        href={asset.fileURL}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", fontWeight: 600, color: "#1D4ED8" }}>
+                        <Download style={{ width: "0.9rem", height: "0.9rem" }} />
+                        Open
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAsset(asset.id, asset.fileURL)}
+                        disabled={deletingAssetId === asset.id}
+                        style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "0.8rem", fontWeight: 600, color: "#DC2626", background: "none", border: "none", cursor: "pointer" }}>
+                        {deletingAssetId === asset.id ? (
+                          <Loader2 className="animate-spin" style={{ width: "0.9rem", height: "0.9rem" }} />
+                        ) : (
+                          <FileText style={{ width: "0.9rem", height: "0.9rem" }} />
+                        )}
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: "0.75rem", color: "#475569", margin: 0 }}>
+                    {asset.fileName}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
           {/* Costume grid */}
           <div>
             <h2 style={{ fontSize: "0.78rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", marginBottom: "1rem" }}>
@@ -510,6 +710,8 @@ export default function SeasonsPage() {
                   costumeType={costumeType}
                   count={registrations.filter(r => r.costumeType === costumeType).length}
                   index={i}
+                  stylePhotoURL={stylePhotoMap[costumeType]?.fileURL}
+                  onUploadStylePhoto={() => startAssetUpload("costume_style_photo", costumeType)}
                   onViewDetails={() => setDetailType(costumeType)}
                 />
               ))}

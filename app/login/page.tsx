@@ -26,7 +26,7 @@ export default function LoginPage() {
     try {
       await signIn(email, password);
       router.push("/");
-    } catch (err) {
+    } catch {
       setError("Invalid email or password");
     } finally {
       setIsLoading(false);
@@ -39,7 +39,7 @@ export default function LoginPage() {
     try {
       await signInWithGoogle();
       router.push("/");
-    } catch (err) {
+    } catch {
       setError("Google sign-in failed");
     } finally {
       setIsLoading(false);

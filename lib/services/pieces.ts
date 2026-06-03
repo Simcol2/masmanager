@@ -16,7 +16,6 @@ import type { MasterPiece, SeasonPieceConfig, CostumeType } from "@/types";
 import {
   DEFAULT_PIECE_NAMES,
   DEFAULT_PIECE_SIZE_GROUPS,
-  PieceCategory,
 } from "@/types";
 
 // ── Timestamp helpers ────────────────────────────────────────────────────────

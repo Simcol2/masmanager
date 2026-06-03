@@ -8,6 +8,7 @@ const nextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+  outputFileTracingRoot: __dirname,
 };
 
 module.exports = nextConfig;

@@ -6,8 +6,6 @@ import { useAuth } from "@/lib/auth";
 import {
   LayoutDashboard,
   Users,
-  Package,
-  Hammer,
   Shirt,
   BarChart3,
   CalendarDays,

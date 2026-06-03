@@ -234,6 +234,25 @@ export const SeasonPieceConfigSchema = z.object({
   updatedAt: z.date(),
 });
 
+export const SeasonAssetCategory = z.enum([
+  "costume_style_photo",
+  "season_logo",
+  "marketing_asset",
+]);
+
+export const SeasonAssetSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  category: SeasonAssetCategory,
+  costumeType: CostumeType.optional(),
+  title: z.string().min(1),
+  fileName: z.string().min(1),
+  fileURL: z.string().url(),
+  notes: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
 // ─── Gems & Supplies ─────────────────────────────────────────────────────────
 // Individual raw materials: rhinestones, gems, trims, glue, fabric, etc.
 // These feed into the Applique builder so cost rolls up automatically.
@@ -394,6 +413,8 @@ export type PieceCategory = z.infer<typeof PieceCategory>;
 export type PieceSizeGroup = z.infer<typeof PieceSizeGroup>;
 export type MasterPiece = z.infer<typeof MasterPieceSchema>;
 export type SeasonPieceConfig = z.infer<typeof SeasonPieceConfigSchema>;
+export type SeasonAssetCategory = z.infer<typeof SeasonAssetCategory>;
+export type SeasonAsset = z.infer<typeof SeasonAssetSchema>;
 
 export type User = z.infer<typeof UserSchema>;
 export type Season = z.infer<typeof SeasonSchema>;
