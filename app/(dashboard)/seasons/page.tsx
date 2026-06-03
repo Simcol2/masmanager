@@ -1,10 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Users, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
-import { type CostumeType, CostumeTypeLabels } from "@/types";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  CalendarDays, Users, Sparkles, ChevronDown, ChevronUp,
+  Plus, X, Check, Loader2, ChevronRight,
+} from "lucide-react";
+import {
+  type CostumeType, CostumeTypeLabels,
+  type MasterPiece, type SeasonPieceConfig, type Registration,
+} from "@/types";
+import {
+  getMasterPieces, seedDefaultPieces,
+  upsertSeasonPieceConfig, getSeasonPieceConfigs, deleteSeasonPieceConfig,
+} from "@/lib/services/pieces";
 
 const SEASONS = ["2026"] as const;
 
@@ -16,12 +27,6 @@ const COSTUME_BREAKDOWN: Record<CostumeType, { piece: string; notes?: string }[]
   boys_frontline:       [{ piece: "Arm Bands" }, { piece: "Shorts" }, { piece: "Top" }, { piece: "Belt" }, { piece: "Chest Piece" }, { piece: "Head Piece", notes: "Feather Headband" }, { piece: "Backpack", notes: "Small Backpack" }],
   girls_ultra_frontline:[{ piece: "Arm Bands" }, { piece: "Leg Bands" }, { piece: "Shorts", notes: "Green Shorts" }, { piece: "Top" }, { piece: "Necklace" }, { piece: "Head Piece", notes: "Large Crown" }, { piece: "Collar", notes: "Large Red Feather Collar" }, { piece: "Backpack", notes: "Large Backpack" }, { piece: "Half Skirt", notes: "Cage Skirt" }],
   boys_ultra_frontline: [{ piece: "Arm Bands" }, { piece: "Leg Bands" }, { piece: "Shorts" }, { piece: "Top" }, { piece: "Belt" }, { piece: "Chest Piece" }, { piece: "Head Piece", notes: "Feather Headband" }, { piece: "Backpack", notes: "Soccer Ball Backpack" }],
-};
-
-const REGISTRATION_COUNTS: Record<CostumeType, number> = {
-  girls_backline: 3, boys_backline: 4, toddler_frontline: 1,
-  girls_frontline: 0, boys_frontline: 0,
-  girls_ultra_frontline: 1, boys_ultra_frontline: 3,
 };
 
 const APPLIQUES_2026 = [
@@ -54,10 +59,324 @@ const PIECE_COLORS: Record<string, { bg: string; color: string }> = {
   "Shoes":       { bg: "rgba(107,114,128,0.1)", color: "#374151" },
 };
 
-const TYPE_COLORS: CostumeType[] = COSTUME_ORDER;
 const CARD_ACCENT = ["#FF006E","#1A73E8","#FFD60A","#FF6B35","#00BCD4","#673AB7","#4CAF50"];
 
-function CostumeCard({ costumeType, index }: { costumeType: CostumeType; index: number }) {
+// Mock registrations — replace with Firestore query once registrations service is wired
+const MOCK_REGISTRATIONS: Registration[] = [
+  // girls_backline
+  { id: "r1", seasonId: "2026", firstName: "Ayla", lastName: "Thomas", age: 12, gender: "girl", costumeType: "girls_backline", topSize: "Youth M", bottomSize: "Youth M", bandSize: "Small", waist: "24in", shoeSize: "4", shoeCategory: "Girls", addOns: "Extra necklace", parentName: "Sandra Thomas", parentPhone: "868-555-0101", registrationDate: new Date("2024-11-15"), paymentStatus: "paid", amountPaid: 2500, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r2", seasonId: "2026", firstName: "Maya", lastName: "Baptiste", age: 9, gender: "girl", costumeType: "girls_backline", topSize: "Youth S", bottomSize: "Youth S", bandSize: "Small", waist: "22in", shoeSize: "3", shoeCategory: "Girls", parentName: "Carla Baptiste", parentPhone: "868-555-0102", registrationDate: new Date("2024-11-18"), paymentStatus: "partial", amountPaid: 1250, balanceOwing: 1250, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r3", seasonId: "2026", firstName: "Zara", lastName: "Williams", age: 14, gender: "girl", costumeType: "girls_backline", topSize: "Youth L", bottomSize: "Youth L", bandSize: "Large", waist: "26in", shoeSize: "5", shoeCategory: "Girls", addOns: "Arm Band upgrade", parentName: "Denise Williams", parentPhone: "868-555-0103", registrationDate: new Date("2024-11-20"), paymentStatus: "paid", amountPaid: 2500, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  // boys_backline
+  { id: "r4", seasonId: "2026", firstName: "Kai", lastName: "Alexis", age: 11, gender: "boy", costumeType: "boys_backline", topSize: "Youth M", bottomSize: "Youth M", bandSize: "Small", parentName: "Marcus Alexis", parentPhone: "868-555-0104", registrationDate: new Date("2024-11-12"), paymentStatus: "paid", amountPaid: 2200, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r5", seasonId: "2026", firstName: "Elijah", lastName: "Pierre", age: 8, gender: "boy", costumeType: "boys_backline", topSize: "Youth S", bottomSize: "Youth S", bandSize: "Small", parentName: "Jean Pierre", parentPhone: "868-555-0105", registrationDate: new Date("2024-11-14"), paymentStatus: "unpaid", amountPaid: 0, balanceOwing: 2200, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r6", seasonId: "2026", firstName: "Nolan", lastName: "Joseph", age: 13, gender: "boy", costumeType: "boys_backline", topSize: "Youth L", bottomSize: "Youth L", bandSize: "Large", addOns: "Extra belt", parentName: "Kevin Joseph", parentPhone: "868-555-0106", registrationDate: new Date("2024-11-16"), paymentStatus: "paid", amountPaid: 2200, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r7", seasonId: "2026", firstName: "Theo", lastName: "Ramkissoon", age: 10, gender: "boy", costumeType: "boys_backline", topSize: "Youth M", bottomSize: "Youth M", bandSize: "Small", parentName: "Rita Ramkissoon", parentPhone: "868-555-0107", registrationDate: new Date("2024-11-19"), paymentStatus: "partial", amountPaid: 1100, balanceOwing: 1100, createdAt: new Date(), updatedAt: new Date() },
+  // toddler_frontline
+  { id: "r8", seasonId: "2026", firstName: "Lily", lastName: "Charles", age: 3, gender: "girl", costumeType: "toddler_frontline", topSize: "3T", bottomSize: "3T", bandSize: "Small", shoeSize: "7", shoeCategory: "Toddler", parentName: "Tanya Charles", parentPhone: "868-555-0108", registrationDate: new Date("2024-12-01"), paymentStatus: "paid", amountPaid: 1800, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  // girls_ultra_frontline
+  { id: "r9", seasonId: "2026", firstName: "Serena", lastName: "Mohammed", age: 15, gender: "girl", costumeType: "girls_ultra_frontline", topSize: "Adult S", bottomSize: "Adult S", bandSize: "Small", waist: "25in", shoeSize: "6", shoeCategory: "Women", addOns: "Crown upgrade, Extra feathers", parentName: "Farida Mohammed", parentPhone: "868-555-0109", registrationDate: new Date("2024-11-10"), paymentStatus: "paid", amountPaid: 4500, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  // boys_ultra_frontline
+  { id: "r10", seasonId: "2026", firstName: "Jordan", lastName: "Lewis", age: 14, gender: "boy", costumeType: "boys_ultra_frontline", topSize: "Youth XL", bottomSize: "Youth XL", bandSize: "Large", addOns: "Soccer ball upgrade", parentName: "Robert Lewis", parentPhone: "868-555-0110", registrationDate: new Date("2024-11-11"), paymentStatus: "paid", amountPaid: 4200, balanceOwing: 0, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r11", seasonId: "2026", firstName: "Asher", lastName: "Prescott", age: 12, gender: "boy", costumeType: "boys_ultra_frontline", topSize: "Youth L", bottomSize: "Youth L", bandSize: "Large", parentName: "Anna Prescott", parentPhone: "868-555-0111", registrationDate: new Date("2024-11-22"), paymentStatus: "partial", amountPaid: 2100, balanceOwing: 2100, createdAt: new Date(), updatedAt: new Date() },
+  { id: "r12", seasonId: "2026", firstName: "Devon", lastName: "Bartholomew", age: 16, gender: "boy", costumeType: "boys_ultra_frontline", topSize: "Adult S", bottomSize: "Adult S", bandSize: "Large", addOns: "Backpack upgrade", parentName: "Claire Bartholomew", parentPhone: "868-555-0112", registrationDate: new Date("2024-12-05"), paymentStatus: "unpaid", amountPaid: 0, balanceOwing: 4200, createdAt: new Date(), updatedAt: new Date() },
+];
+
+// Derive counts from mock data so the summary card stays in sync
+const REGISTRATION_COUNTS = COSTUME_ORDER.reduce((acc, type) => {
+  acc[type] = MOCK_REGISTRATIONS.filter(r => r.costumeType === type).length;
+  return acc;
+}, {} as Record<CostumeType, number>);
+
+// ── Registration row ─────────────────────────────────────────────────────────
+function RegistrationRow({ reg }: { reg: Registration }) {
+  const sizes: string[] = [];
+  if (reg.topSize)     sizes.push(`Top: ${reg.topSize}`);
+  if (reg.bottomSize)  sizes.push(`Bottom: ${reg.bottomSize}`);
+  if (reg.bandSize)    sizes.push(`Bands: ${reg.bandSize}`);
+  if (reg.girlsTopSize) sizes.push(`Girls Top: ${reg.girlsTopSize}`);
+  if (reg.waist)       sizes.push(`Waist: ${reg.waist}`);
+  if (reg.shoeSize)    sizes.push(`Shoe: ${reg.shoeSize}${reg.shoeCategory ? ` (${reg.shoeCategory})` : ""}`);
+
+  const payMap = {
+    paid:    { bg: "rgba(76,175,80,0.1)",   color: "#2E7D32",  label: "Paid" },
+    partial: { bg: "rgba(255,152,0,0.1)",   color: "#E65100",  label: "Partial" },
+    unpaid:  { bg: "rgba(229,57,53,0.1)",   color: "#B71C1C",  label: "Unpaid" },
+  } as const;
+  const pay = payMap[reg.paymentStatus];
+
+  return (
+    <div style={{ background: "#FAFAFA", border: "1px solid #F3F4F6", borderRadius: "0.75rem", padding: "0.75rem 1rem", display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#1E2029" }}>
+          {reg.firstName} {reg.lastName}
+        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+          <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>{reg.age}y · {reg.gender}</span>
+          <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "0.15rem 0.5rem", borderRadius: "999px", background: pay.bg, color: pay.color }}>
+            {pay.label}
+          </span>
+        </div>
+      </div>
+      {sizes.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
+          {sizes.map(s => (
+            <span key={s} style={{ fontSize: "0.7rem", padding: "0.15rem 0.45rem", borderRadius: "0.35rem", background: "rgba(26,115,232,0.07)", color: "#1A73E8" }}>
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
+      {reg.addOns && (
+        <p style={{ fontSize: "0.75rem", color: "#6B7280", margin: 0 }}>
+          <span style={{ fontWeight: 600, color: "#374151" }}>Add-ons:</span> {reg.addOns}
+        </p>
+      )}
+      <p style={{ fontSize: "0.7rem", color: "#9CA3AF", margin: 0 }}>
+        {reg.parentName}{reg.parentPhone ? ` · ${reg.parentPhone}` : ""}
+      </p>
+    </div>
+  );
+}
+
+// ── Costume detail dialog ────────────────────────────────────────────────────
+function CostumeDetailDialog({
+  costumeType, season, open, onClose,
+}: {
+  costumeType: CostumeType | null;
+  season: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [masterPieces, setMasterPieces] = useState<MasterPiece[]>([]);
+  const [pieceConfigs, setPieceConfigs] = useState<SeasonPieceConfig[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [addingPiece, setAddingPiece] = useState(false);
+  const [selectedPieceId, setSelectedPieceId] = useState("");
+  const [pieceNotes, setPieceNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !costumeType) return;
+    let cancelled = false;
+    setLoading(true);
+    setAddingPiece(false);
+    setSelectedPieceId("");
+    setPieceNotes("");
+
+    Promise.all([
+      seedDefaultPieces().catch(() => {}),
+      getMasterPieces(),
+      getSeasonPieceConfigs(season),
+    ]).then(([, pieces, allConfigs]) => {
+      if (cancelled) return;
+      setMasterPieces(pieces);
+      setPieceConfigs(allConfigs.filter(c => c.costumeType === costumeType));
+    }).catch(console.error)
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [open, costumeType, season]);
+
+  async function handleAddPiece() {
+    if (!selectedPieceId || !costumeType) return;
+    const piece = masterPieces.find(p => p.id === selectedPieceId);
+    if (!piece) return;
+    setSaving(true);
+    try {
+      await upsertSeasonPieceConfig({
+        seasonId: season,
+        costumeType,
+        masterPieceId: piece.id,
+        pieceName: piece.name,
+        availableSizes: [],
+        notes: pieceNotes || undefined,
+      });
+      const updated = await getSeasonPieceConfigs(season);
+      setPieceConfigs(updated.filter(c => c.costumeType === costumeType));
+      setAddingPiece(false);
+      setSelectedPieceId("");
+      setPieceNotes("");
+    } catch (e) { console.error(e); }
+    finally { setSaving(false); }
+  }
+
+  async function handleRemovePiece(configId: string) {
+    setRemovingId(configId);
+    try {
+      await deleteSeasonPieceConfig(configId);
+      setPieceConfigs(prev => prev.filter(c => c.id !== configId));
+    } catch (e) { console.error(e); }
+    finally { setRemovingId(null); }
+  }
+
+  if (!costumeType) return null;
+
+  const defaultPieces = COSTUME_BREAKDOWN[costumeType];
+  const registrations = MOCK_REGISTRATIONS.filter(r => r.costumeType === costumeType);
+  const accent = CARD_ACCENT[COSTUME_ORDER.indexOf(costumeType) % CARD_ACCENT.length];
+
+  const configuredPieceIds = new Set(pieceConfigs.map(c => c.masterPieceId));
+  const availableMasterPieces = masterPieces.filter(p => !configuredPieceIds.has(p.id));
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent style={{
+        position: "fixed", top: "50%", left: "50%",
+        transform: "translate(-50%, -50%)", zIndex: 51,
+        width: "calc(100% - 2rem)", maxWidth: "42rem", maxHeight: "88vh",
+        overflow: "hidden", background: "#FFFFFF", border: "1px solid #E5E7EB",
+        borderRadius: "1rem", padding: 0, boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+        outline: "none", display: "flex", flexDirection: "column",
+      }}>
+
+        {/* Header — right padding accounts for the absolute-positioned close button */}
+        <div style={{ padding: "1.25rem 3.5rem 1rem 1.5rem", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{ width: "0.3rem", height: "2rem", borderRadius: "2px", background: accent, flexShrink: 0 }} />
+            <div>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>
+                {CostumeTypeLabels[costumeType]}
+              </h2>
+              <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: 0 }}>
+                {season} Season · {registrations.length} registration{registrations.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div style={{ overflowY: "auto", flex: 1, padding: "1.25rem 1.5rem", display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+
+          {/* ── Pieces ── */}
+          <section>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+              <h3 style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", margin: 0 }}>
+                Pieces — {defaultPieces.length + pieceConfigs.length} total
+              </h3>
+              {!addingPiece && (
+                <button
+                  onClick={() => setAddingPiece(true)}
+                  style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.8rem", fontWeight: 600, padding: "0.3rem 0.75rem", borderRadius: "0.5rem", border: "none", background: accent, color: "#fff", cursor: "pointer" }}>
+                  <Plus style={{ width: "0.8rem", height: "0.8rem" }} />
+                  Add Piece
+                </button>
+              )}
+            </div>
+
+            {/* Add piece inline form */}
+            {addingPiece && (
+              <div style={{ marginBottom: "0.75rem", padding: "0.875rem", background: "#F9FAFB", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151", margin: 0 }}>Add piece from master list</p>
+                {loading ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#9CA3AF", fontSize: "0.8rem" }}>
+                    <Loader2 style={{ width: "0.9rem", height: "0.9rem" }} className="animate-spin" />
+                    Loading pieces…
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={selectedPieceId}
+                      onChange={e => setSelectedPieceId(e.target.value)}
+                      style={{ width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.875rem", border: "1.5px solid #E5E7EB", borderRadius: "0.5rem", background: "#fff", color: "#1E2029", outline: "none" }}>
+                      <option value="">— Select a piece —</option>
+                      {availableMasterPieces.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      placeholder="Notes (optional, e.g. Large Crown)"
+                      value={pieceNotes}
+                      onChange={e => setPieceNotes(e.target.value)}
+                      style={{ width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.875rem", border: "1.5px solid #E5E7EB", borderRadius: "0.5rem", background: "#fff", color: "#1E2029", outline: "none" }} />
+                    <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                      <button
+                        onClick={() => { setAddingPiece(false); setSelectedPieceId(""); setPieceNotes(""); }}
+                        style={{ padding: "0.4rem 0.875rem", fontSize: "0.8rem", border: "1.5px solid #E5E7EB", borderRadius: "0.5rem", background: "#fff", cursor: "pointer", color: "#374151", fontWeight: 500 }}>
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAddPiece}
+                        disabled={!selectedPieceId || saving}
+                        style={{ padding: "0.4rem 0.875rem", fontSize: "0.8rem", border: "none", borderRadius: "0.5rem", background: accent, color: "#fff", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.3rem", opacity: (!selectedPieceId || saving) ? 0.6 : 1 }}>
+                        {saving
+                          ? <Loader2 style={{ width: "0.75rem", height: "0.75rem" }} className="animate-spin" />
+                          : <Check style={{ width: "0.75rem", height: "0.75rem" }} />}
+                        Save
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Default pieces */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+              {defaultPieces.map(p => {
+                const pc = PIECE_COLORS[p.piece] ?? { bg: "rgba(107,114,128,0.08)", color: "#374151" };
+                return (
+                  <div key={p.piece + (p.notes ?? "")}>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 600, padding: "0.2rem 0.6rem", borderRadius: "0.4rem", background: pc.bg, color: pc.color, display: "inline-block" }}>
+                      {p.piece}
+                    </span>
+                    {p.notes && <span style={{ display: "block", fontSize: "0.65rem", color: "#9CA3AF", paddingLeft: "0.25rem", marginTop: "0.1rem" }}>{p.notes}</span>}
+                  </div>
+                );
+              })}
+
+              {/* Extra pieces added via master piece list */}
+              {pieceConfigs.map(cfg => {
+                const pc = PIECE_COLORS[cfg.pieceName] ?? { bg: "rgba(76,175,80,0.08)", color: "#2E7D32" };
+                return (
+                  <div key={cfg.id} style={{ display: "flex", alignItems: "flex-start", gap: "0.2rem" }}>
+                    <div>
+                      <span style={{ fontSize: "0.72rem", fontWeight: 600, padding: "0.2rem 0.6rem", borderRadius: "0.4rem", background: pc.bg, color: pc.color, border: `1px dashed ${pc.color}60`, display: "inline-block" }}>
+                        {cfg.pieceName}
+                      </span>
+                      {cfg.notes && <span style={{ display: "block", fontSize: "0.65rem", color: "#9CA3AF", paddingLeft: "0.25rem", marginTop: "0.1rem" }}>{cfg.notes}</span>}
+                    </div>
+                    <button
+                      onClick={() => handleRemovePiece(cfg.id)}
+                      disabled={removingId === cfg.id}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#D1D5DB", padding: "0.15rem", display: "flex", alignItems: "center", marginTop: "0.1rem" }}>
+                      {removingId === cfg.id
+                        ? <Loader2 style={{ width: "0.65rem", height: "0.65rem" }} className="animate-spin" />
+                        : <X style={{ width: "0.65rem", height: "0.65rem" }} />}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ── Registrations ── */}
+          <section>
+            <h3 style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", marginBottom: "0.75rem" }}>
+              Registrations ({registrations.length})
+            </h3>
+            {registrations.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "2rem", color: "#9CA3AF", fontSize: "0.875rem", background: "#F9FAFB", borderRadius: "0.75rem", border: "1px solid #F3F4F6" }}>
+                No registrations yet for this costume type
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {registrations.map(reg => <RegistrationRow key={reg.id} reg={reg} />)}
+              </div>
+            )}
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Costume card ─────────────────────────────────────────────────────────────
+function CostumeCard({ costumeType, index, onViewDetails }: {
+  costumeType: CostumeType;
+  index: number;
+  onViewDetails: () => void;
+}) {
   const [expanded, setExpanded] = useState(true);
   const pieces = COSTUME_BREAKDOWN[costumeType];
   const count = REGISTRATION_COUNTS[costumeType];
@@ -71,14 +390,14 @@ function CostumeCard({ costumeType, index }: { costumeType: CostumeType; index: 
       <div style={{ padding: "1rem" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "0.5rem", marginBottom: "0.75rem" }}>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <h3 style={{ fontSize: "0.95rem", fontWeight: 700, color: "#1E2029", margin: 0 }}>{CostumeTypeLabels[costumeType]}</h3>
             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.25rem" }}>
               <Users style={{ width: "0.8rem", height: "0.8rem", color: "#9CA3AF" }} />
               <span style={{ fontSize: "0.78rem", color: "#6B7280" }}>{count} registered</span>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
             <span style={{
               fontSize: "0.7rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px",
               background: count > 0 ? "rgba(76,175,80,0.1)" : "rgba(107,114,128,0.08)",
@@ -87,7 +406,7 @@ function CostumeCard({ costumeType, index }: { costumeType: CostumeType; index: 
             }}>
               {count > 0 ? "Active" : "Empty"}
             </span>
-            <button onClick={() => setExpanded(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.1rem" }}>
+            <button onClick={() => setExpanded(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.1rem", display: "flex" }}>
               {expanded ? <ChevronUp style={{ width: "1rem", height: "1rem" }} /> : <ChevronDown style={{ width: "1rem", height: "1rem" }} />}
             </button>
           </div>
@@ -98,16 +417,12 @@ function CostumeCard({ costumeType, index }: { costumeType: CostumeType; index: 
             <p style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>
               {pieces.length} Pieces
             </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "0.875rem" }}>
               {pieces.map(p => {
                 const pc = PIECE_COLORS[p.piece] ?? { bg: "rgba(107,114,128,0.08)", color: "#374151" };
                 return (
                   <div key={p.piece + (p.notes ?? "")}>
-                    <span style={{
-                      fontSize: "0.72rem", fontWeight: 600, padding: "0.2rem 0.55rem",
-                      borderRadius: "0.4rem", background: pc.bg, color: pc.color,
-                      display: "inline-block",
-                    }}>
+                    <span style={{ fontSize: "0.72rem", fontWeight: 600, padding: "0.2rem 0.55rem", borderRadius: "0.4rem", background: pc.bg, color: pc.color, display: "inline-block" }}>
                       {p.piece}
                     </span>
                     {p.notes && <span style={{ display: "block", fontSize: "0.65rem", color: "#9CA3AF", paddingLeft: "0.3rem", marginTop: "0.1rem" }}>{p.notes}</span>}
@@ -117,13 +432,26 @@ function CostumeCard({ costumeType, index }: { costumeType: CostumeType; index: 
             </div>
           </>
         )}
+
+        {/* View details button */}
+        <button
+          onClick={onViewDetails}
+          style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem", fontSize: "0.8rem", fontWeight: 600, padding: "0.5rem", borderRadius: "0.625rem", border: `1px solid ${accent}30`, background: `${accent}08`, color: accent, cursor: "pointer", transition: "background 0.15s" }}
+          onMouseEnter={e => (e.currentTarget.style.background = `${accent}14`)}
+          onMouseLeave={e => (e.currentTarget.style.background = `${accent}08`)}>
+          View registrations & manage pieces
+          <ChevronRight style={{ width: "0.85rem", height: "0.85rem" }} />
+        </button>
       </div>
     </motion.div>
   );
 }
 
+// ── Main page ────────────────────────────────────────────────────────────────
 export default function SeasonsPage() {
   const [selectedSeason, setSelectedSeason] = useState<string>("2026");
+  const [detailType, setDetailType] = useState<CostumeType | null>(null);
+
   const totalRegistrations = Object.values(REGISTRATION_COUNTS).reduce((s, n) => s + n, 0);
   const activeTypes = COSTUME_ORDER.filter(c => REGISTRATION_COUNTS[c] > 0).length;
 
@@ -140,12 +468,7 @@ export default function SeasonsPage() {
           <select
             value={selectedSeason}
             onChange={e => setSelectedSeason(e.target.value)}
-            style={{
-              appearance: "none", background: "#FFFFFF", border: "1.5px solid #E5E7EB",
-              borderRadius: "0.75rem", padding: "0.5rem 2.5rem 0.5rem 1rem",
-              fontSize: "0.875rem", fontWeight: 600, color: "#1E2029", cursor: "pointer",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-            }}>
+            style={{ appearance: "none", background: "#FFFFFF", border: "1.5px solid #E5E7EB", borderRadius: "0.75rem", padding: "0.5rem 2.5rem 0.5rem 1rem", fontSize: "0.875rem", fontWeight: 600, color: "#1E2029", cursor: "pointer", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
             {SEASONS.map(s => <option key={s} value={s}>{s} Season</option>)}
           </select>
           <CalendarDays style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", width: "1rem", height: "1rem", color: "#6B7280", pointerEvents: "none" }} />
@@ -168,7 +491,6 @@ export default function SeasonsPage() {
                 <p style={{ fontSize: "0.78rem", color: "#6B7280", margin: 0 }}>The Black Stars</p>
               </div>
             </div>
-
             <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
               {[
                 { value: totalRegistrations, label: "Registrations", color: "#FF006E" },
@@ -181,7 +503,6 @@ export default function SeasonsPage() {
                 </div>
               ))}
             </div>
-
             <div style={{ marginLeft: "auto" }}>
               <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "0.3rem 0.75rem", borderRadius: "999px", background: "rgba(76,175,80,0.1)", color: "#2E7D32", border: "1px solid rgba(76,175,80,0.25)" }}>
                 Active Season
@@ -196,7 +517,12 @@ export default function SeasonsPage() {
             </h2>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1rem" }}>
               {COSTUME_ORDER.map((costumeType, i) => (
-                <CostumeCard key={costumeType} costumeType={costumeType} index={i} />
+                <CostumeCard
+                  key={costumeType}
+                  costumeType={costumeType}
+                  index={i}
+                  onViewDetails={() => setDetailType(costumeType)}
+                />
               ))}
             </div>
           </div>
@@ -215,7 +541,7 @@ export default function SeasonsPage() {
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1E2029", margin: 0 }}>{a.name}</p>
-                    {a.color && <p style={{ fontSize: "0.75rem", color: "#6B7280", margin: "0.15rem 0 0" }}>{a.color}</p>}
+                    {"color" in a && a.color && <p style={{ fontSize: "0.75rem", color: "#6B7280", margin: "0.15rem 0 0" }}>{a.color}</p>}
                     <p style={{ fontSize: "0.75rem", color: "#9CA3AF", margin: "0.35rem 0 0" }}>
                       Used on: <span style={{ color: "#374151", fontWeight: 500 }}>{a.usedOn.join(", ")}</span>
                     </p>
@@ -227,6 +553,14 @@ export default function SeasonsPage() {
 
         </motion.div>
       </AnimatePresence>
+
+      {/* Costume detail dialog */}
+      <CostumeDetailDialog
+        costumeType={detailType}
+        season={selectedSeason}
+        open={!!detailType}
+        onClose={() => setDetailType(null)}
+      />
     </div>
   );
 }
