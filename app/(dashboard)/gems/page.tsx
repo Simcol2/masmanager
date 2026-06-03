@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { getGemSupplies, createGemSupply, updateGemSupply, deleteGemSupply, seedGemSupplies } from "@/lib/services/gems";
+import { getGemSupplies, createGemSupply, updateGemSupply, deleteGemSupply, seedGemSupplies, deduplicateGemSupplies } from "@/lib/services/gems";
 import { uploadFile, deleteFileByURL } from "@/lib/services/storage";
 import type { GemSupply, SupplyCategory } from "@/types";
 
@@ -468,6 +468,8 @@ export default function GemsPage() {
           seedGemSupplies(),
           new Promise((_, rej) => setTimeout(() => rej(new Error("seed timeout")), 8000)),
         ]).catch((e) => console.warn("Seed skipped:", e.message));
+        // Clean up any duplicates from the previous race-condition double-seed
+        await deduplicateGemSupplies().catch(() => {});
       }
       const data = await Promise.race([
         getGemSupplies(),

@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, addDoc, updateDoc,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc, setDoc,
   deleteDoc, query, orderBy, serverTimestamp, Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -108,13 +108,17 @@ const SEED_SUPPLIES = [
 ];
 
 export async function seedGemSupplies(): Promise<void> {
-  const snap = await getDocs(collection(db, "gemSupplies"));
-  if (!snap.empty) return;
+  // Use a dedicated flag document to prevent race-condition double-seeding
+  const flagRef = doc(db, "seeds", "gemSupplies");
+  const flag = await getDoc(flagRef);
+  if (flag.exists()) return;
+  // Write the flag first so a concurrent call bails out
+  await setDoc(flagRef, { seededAt: serverTimestamp() });
   await Promise.all(
     SEED_SUPPLIES.map(s =>
       addDoc(collection(db, "gemSupplies"), {
         ...s,
-        supplierLink: null,
+        supplierLink: (s as Record<string, unknown>).supplierLink ?? null,
         notes: null,
         photoURL: null,
         createdAt: serverTimestamp(),
@@ -122,4 +126,27 @@ export async function seedGemSupplies(): Promise<void> {
       })
     )
   );
+}
+
+// Remove duplicates that appeared from the race-condition double-seed.
+// Keeps the document with the earlier createdAt for each itemNumber.
+export async function deduplicateGemSupplies(): Promise<void> {
+  const snap = await getDocs(collection(db, "gemSupplies"));
+  const byItemNumber = new Map<string, { id: string; createdAt: Date }[]>();
+  snap.docs.forEach(d => {
+    const num: string = d.data().itemNumber ?? "";
+    const raw = d.data().createdAt;
+    const createdAt = raw instanceof Timestamp ? raw.toDate() : new Date(0);
+    const arr = byItemNumber.get(num) ?? [];
+    arr.push({ id: d.id, createdAt });
+    byItemNumber.set(num, arr);
+  });
+  const toDelete: string[] = [];
+  byItemNumber.forEach(entries => {
+    if (entries.length <= 1) return;
+    // Sort oldest first, delete the rest
+    entries.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+    entries.slice(1).forEach(e => toDelete.push(e.id));
+  });
+  await Promise.all(toDelete.map(id => deleteDoc(doc(db, "gemSupplies", id))));
 }
