@@ -25,12 +25,12 @@ export default function DashboardLayout({
   // Still loading auth state - show spinner
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A0A0C" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FDF6F1" }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-sm flex items-center justify-center" style={{ background: "rgba(212,175,55,0.1)", border: "1px solid rgba(212,175,55,0.2)" }}>
-            <span style={{ color: "#D4AF37", fontWeight: "bold", fontSize: "1.5rem", fontFamily: "serif" }}>M</span>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF6B9D,#D4AF37)", boxShadow: "0 4px 20px rgba(255,107,157,0.3)" }}>
+            <span style={{ color: "#fff", fontWeight: "bold", fontSize: "1.6rem", fontFamily: "serif" }}>M</span>
           </div>
-          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#D4AF37" }} />
+          <Loader2 className="w-6 h-6 animate-spin" style={{ color: "#FF6B9D" }} />
         </div>
       </div>
     );
@@ -40,7 +40,7 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-void-950">
+    <div className="min-h-screen" style={{ backgroundColor: "#FDF6F1" }}>
       <Sidebar />
       <Header />
 

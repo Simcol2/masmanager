@@ -1,44 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
-@import "tw-animate-css";
-
-@import "shadcn/tailwind.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  /* ── Deep navy carnival theme ─────────────────────────────────────── */
-  :root {
-    --background:          oklch(0.16 0.04 260);   /* deep navy */
-    --foreground:          oklch(0.96 0.01 260);
-    --card:                oklch(0.20 0.04 260);
-    --card-foreground:     oklch(0.96 0.01 260);
-    --popover:             oklch(0.22 0.05 260);   /* slightly lighter navy for dropdowns */
-    --popover-foreground:  oklch(0.96 0.01 260);   /* near white — fixes black-on-black */
-    --primary:             oklch(0.82 0.17 85);    /* gold */
-    --primary-foreground:  oklch(0.14 0.03 260);
-    --secondary:           oklch(0.24 0.05 260);
-    --secondary-foreground:oklch(0.96 0.01 260);
-    --muted:               oklch(0.24 0.05 260);
-    --muted-foreground:    oklch(0.65 0.03 260);
-    --accent:              oklch(0.28 0.06 260);
-    --accent-foreground:   oklch(0.96 0.01 260);
-    --destructive:         oklch(0.65 0.22 15);
-    --destructive-foreground: oklch(0.96 0 0);
-    --border:              oklch(1 0 0 / 12%);
-    --input:               oklch(1 0 0 / 10%);
-    --ring:                oklch(0.82 0.17 85);
-    --radius:              0.5rem;
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-    /* carnival accent vars */
-    --carnival-pink:   #FF6B9D;
-    --carnival-coral:  #FF8C69;
-    --carnival-teal:   #00D4B8;
-    --carnival-yellow: #FFD700;
-    --carnival-purple: #9B5DE5;
-    --carnival-lime:   #80FF44;
+@layer base {
+  :root {
+    --background:           253 246 241;   /* warm cream */
+    --foreground:           30 20 40;      /* deep plum */
+    --card:                 255 252 248;   /* off-white */
+    --card-foreground:      30 20 40;
+    --popover:              255 252 248;
+    --popover-foreground:   30 20 40;
+    --primary:              212 175 55;    /* gold */
+    --primary-foreground:   30 20 40;
+    --secondary:            248 240 250;
+    --secondary-foreground: 30 20 40;
+    --muted:                245 238 232;
+    --muted-foreground:     120 100 130;
+    --accent:               255 107 157;   /* carnival pink */
+    --accent-foreground:    255 255 255;
+    --destructive:          220 38 38;
+    --destructive-foreground: 255 255 255;
+    --border:               220 200 210;
+    --input:                230 215 225;
+    --ring:                 212 175 55;
+    --radius:               0.75rem;
   }
 
   * {
@@ -47,131 +34,117 @@
 
   body {
     @apply font-sans antialiased;
-    background-color: #0D1B2E;
-    color: #F0F4FF;
+    background-color: #FDF6F1;
+    color: #1E1428;
   }
 
   html {
     @apply font-sans;
-    background-color: #0D1B2E;
-  }
-
-  /* ── Dropdown / Select fix: force readable text ────────────────────── */
-  [data-radix-popper-content-wrapper],
-  [role="listbox"],
-  [role="menu"],
-  [role="combobox"] {
-    --popover-foreground: oklch(0.96 0.01 260) !important;
+    background-color: #FDF6F1;
   }
 
   /* Custom scrollbar */
-  ::-webkit-scrollbar          { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track    { background: #0D1B2E; }
-  ::-webkit-scrollbar-thumb    { background: #1E3A5F; border-radius: 3px; }
+  ::-webkit-scrollbar          { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track    { background: #F5EEE8; }
+  ::-webkit-scrollbar-thumb    { background: #E8C4D4; border-radius: 10px; }
   ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
 
   ::selection {
-    background: rgba(212, 175, 55, 0.35);
-    color: #FFFBEB;
+    background: rgba(255, 107, 157, 0.25);
+    color: #1E1428;
   }
 
   :focus-visible {
-    outline: 2px solid #D4AF37;
+    outline: 2px solid #FF6B9D;
     outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* ── Glass card — navy tinted ──────────────────────────────────────── */
+
+  /* ── Glass card — white with soft shadow ──────────────────────────── */
   .glass-card {
-    background: rgba(13, 27, 46, 0.85);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 252, 248, 0.92);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(220, 200, 210, 0.5);
     box-shadow:
-      0 4px 6px -1px rgba(0,0,0,0.4),
-      0 2px 4px -1px rgba(0,0,0,0.3),
-      inset 0 1px 0 rgba(255,255,255,0.06);
+      0 2px 8px rgba(180, 100, 140, 0.06),
+      0 1px 3px rgba(180, 100, 140, 0.04);
   }
 
   /* ── Gold button ───────────────────────────────────────────────────── */
   .gold-btn {
-    @apply relative overflow-hidden font-semibold px-6 py-3 rounded-md transition-all duration-300;
-    background-image: linear-gradient(135deg, #D4AF37 0%, #FCD34D 50%, #B8860B 100%);
+    @apply relative overflow-hidden font-semibold px-5 py-2.5 rounded-xl transition-all duration-300;
+    background: linear-gradient(135deg, #D4AF37 0%, #F5D76E 50%, #B8860B 100%);
     background-size: 200% 200%;
-    color: #0D1B2E;
+    color: #1E1428;
+    box-shadow: 0 2px 12px rgba(212, 175, 55, 0.35);
   }
   .gold-btn:hover {
     background-position: 100% 0;
-    box-shadow: 0 0 20px rgba(212,175,55,0.45), 0 4px 12px rgba(0,0,0,0.4);
+    box-shadow: 0 4px 20px rgba(212, 175, 55, 0.5);
     transform: translateY(-1px);
   }
   .gold-btn:active { transform: translateY(0); }
 
+  /* ── Pink button ───────────────────────────────────────────────────── */
+  .pink-btn {
+    @apply relative overflow-hidden font-semibold px-5 py-2.5 rounded-xl transition-all duration-300;
+    background: linear-gradient(135deg, #FF6B9D 0%, #FF8CB4 50%, #E8457A 100%);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(255, 107, 157, 0.35);
+  }
+  .pink-btn:hover {
+    box-shadow: 0 4px 20px rgba(255, 107, 157, 0.5);
+    transform: translateY(-1px);
+  }
+
   /* ── Gold text ─────────────────────────────────────────────────────── */
   .gold-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, #D4AF37 0%, #FCD34D 50%, #B8860B 100%);
+    background-image: linear-gradient(135deg, #D4AF37 0%, #F5D76E 50%, #B8860B 100%);
   }
 
-  /* ── Carnival colour text helpers ──────────────────────────────────── */
-  .text-carnival-pink   { color: var(--carnival-pink); }
-  .text-carnival-coral  { color: var(--carnival-coral); }
-  .text-carnival-teal   { color: var(--carnival-teal); }
-  .text-carnival-yellow { color: var(--carnival-yellow); }
-  .text-carnival-purple { color: var(--carnival-purple); }
-  .text-carnival-lime   { color: var(--carnival-lime); }
-
-  /* ── Carnival badge helpers ─────────────────────────────────────────── */
-  .badge-pink   { background: rgba(255,107,157,0.12); color: #FF6B9D; border: 1px solid rgba(255,107,157,0.25); }
-  .badge-coral  { background: rgba(255,140,105,0.12); color: #FF8C69; border: 1px solid rgba(255,140,105,0.25); }
-  .badge-teal   { background: rgba(0,212,184,0.12);   color: #00D4B8; border: 1px solid rgba(0,212,184,0.25); }
-  .badge-yellow { background: rgba(255,215,0,0.12);   color: #FFD700; border: 1px solid rgba(255,215,0,0.25); }
-  .badge-purple { background: rgba(155,93,229,0.12);  color: #9B5DE5; border: 1px solid rgba(155,93,229,0.25); }
-  .badge-lime   { background: rgba(128,255,68,0.12);  color: #80FF44; border: 1px solid rgba(128,255,68,0.25); }
-  .badge-gold   { background: rgba(212,175,55,0.12);  color: #D4AF37; border: 1px solid rgba(212,175,55,0.25); }
-  .badge-crimson{ background: rgba(220,20,60,0.12);   color: #DC143C; border: 1px solid rgba(220,20,60,0.25); }
-  .badge-emerald{ background: rgba(16,185,129,0.12);  color: #10B981; border: 1px solid rgba(16,185,129,0.25); }
-
-  /* ── Status badges ──────────────────────────────────────────────────── */
-  .badge-gold    { @apply px-2 py-0.5 rounded-md text-xs font-medium; }
-  .badge-crimson { @apply px-2 py-0.5 rounded-md text-xs font-medium; }
-  .badge-emerald { @apply px-2 py-0.5 rounded-md text-xs font-medium; }
+  /* ── Carnival colour badges ─────────────────────────────────────────── */
+  .badge-pink   { background: rgba(255,107,157,0.12); color: #D63384; border: 1px solid rgba(255,107,157,0.3); }
+  .badge-coral  { background: rgba(255,140,105,0.12); color: #C84B2F; border: 1px solid rgba(255,140,105,0.3); }
+  .badge-teal   { background: rgba(0,180,160,0.1);   color: #007D70; border: 1px solid rgba(0,180,160,0.3); }
+  .badge-yellow { background: rgba(255,215,0,0.12);  color: #9A7700; border: 1px solid rgba(255,215,0,0.3); }
+  .badge-purple { background: rgba(155,93,229,0.1);  color: #6B2FAA; border: 1px solid rgba(155,93,229,0.25); }
+  .badge-lime   { background: rgba(100,200,50,0.1);  color: #3A7A00; border: 1px solid rgba(100,200,50,0.25); }
+  .badge-gold   { background: rgba(212,175,55,0.12); color: #8A6800; border: 1px solid rgba(212,175,55,0.3); }
+  .badge-crimson{ background: rgba(220,20,60,0.08);  color: #A8001C; border: 1px solid rgba(220,20,60,0.2); }
+  .badge-emerald{ background: rgba(16,185,129,0.1);  color: #047857; border: 1px solid rgba(16,185,129,0.25); }
 
   /* ── Input ──────────────────────────────────────────────────────────── */
   .luxury-input {
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: #F0F4FF;
-    border-radius: 0.375rem;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1.5px solid rgba(220, 200, 210, 0.7);
+    color: #1E1428;
+    border-radius: 0.625rem;
     transition: all 0.2s;
   }
-  .luxury-input::placeholder { color: rgba(180,200,240,0.4); }
+  .luxury-input::placeholder { color: rgba(120, 100, 130, 0.5); }
   .luxury-input:focus {
-    border-color: rgba(212,175,55,0.5);
-    box-shadow: 0 0 0 2px rgba(212,175,55,0.15);
+    border-color: #FF6B9D;
+    box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.12);
     outline: none;
-  }
-
-  /* ── Select dropdown text fix ───────────────────────────────────────── */
-  .bg-void-900 {
-    background-color: #0F2540 !important;
-  }
-  .border-void-700 {
-    border-color: rgba(255,255,255,0.15) !important;
+    background: #fff;
   }
 
   /* ── Table ──────────────────────────────────────────────────────────── */
   .luxury-table { @apply w-full border-collapse; }
   .luxury-table th {
     @apply text-left text-xs font-semibold uppercase tracking-wider pb-3 pt-4 px-4;
-    color: rgba(180,200,240,0.6);
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: rgba(120, 100, 130, 0.8);
+    border-bottom: 1.5px solid rgba(220, 200, 210, 0.5);
   }
   .luxury-table td {
     @apply py-3 px-4 text-sm;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(220, 200, 210, 0.3);
+    color: #1E1428;
   }
-  .luxury-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .luxury-table tr:hover td { background: rgba(255, 107, 157, 0.03); }
 
   /* ── Page header ────────────────────────────────────────────────────── */
   .page-header {
@@ -179,18 +152,26 @@
   }
   .page-header h1 {
     @apply font-display text-2xl md:text-3xl font-bold;
-    color: #F0F4FF;
+    color: #1E1428;
   }
 
-  /* ── Skeletons / misc ───────────────────────────────────────────────── */
-  .skeleton { @apply animate-pulse rounded-md; background: rgba(255,255,255,0.08); }
-  .section-title { @apply font-display text-2xl md:text-3xl font-bold tracking-tight; }
+  /* ── Section + metric ───────────────────────────────────────────────── */
+  .section-title { @apply font-display text-2xl md:text-3xl font-bold tracking-tight; color: #1E1428; }
   .metric-value  { @apply font-display text-3xl md:text-4xl font-bold gold-text; }
-  .nav-active    { border-left: 2px solid #D4AF37; background: rgba(212,175,55,0.07); color: #D4AF37; }
-  .toast-gold    { background: #0F2540; border: 1px solid rgba(212,175,55,0.3); color: #FFF8E1; }
-  .mobile-card   { @apply glass-card p-4 rounded-lg mb-3; }
-}
 
-@layer utilities {
+  /* ── Nav active ─────────────────────────────────────────────────────── */
+  .nav-active { border-left: 2px solid #FF6B9D; background: rgba(255,107,157,0.07); color: #D63384; }
+
+  /* ── Misc ───────────────────────────────────────────────────────────── */
+  .skeleton { @apply animate-pulse rounded-xl; background: rgba(220, 200, 210, 0.4); }
+  .toast-gold { background: #FFFBF0; border: 1px solid rgba(212,175,55,0.3); color: #5A4000; }
+  .mobile-card { @apply glass-card p-4 rounded-2xl mb-3; }
   .text-balance { text-wrap: balance; }
+
+  /* ── Popover/dropdown fix ─────────────────────────────────────────── */
+  [data-radix-popper-content-wrapper] > * {
+    background: #FFFCF8 !important;
+    color: #1E1428 !important;
+    border: 1.5px solid rgba(220, 200, 210, 0.6) !important;
+  }
 }

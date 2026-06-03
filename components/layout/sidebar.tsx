@@ -49,12 +49,13 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hidden lg:flex flex-col h-screen bg-void-950 border-r border-void-800/50 transition-all duration-300 fixed left-0 top-0 z-40",
+        "hidden lg:flex flex-col h-screen transition-all duration-300 fixed left-0 top-0 z-40",
         collapsed ? "w-20" : "w-64"
       )}
+      style={{ background: "#fff", borderRight: "1.5px solid rgba(220,200,210,0.5)", boxShadow: "2px 0 16px rgba(180,100,140,0.06)" }}
     >
       {/* Logo */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-void-800/50">
+      <div className="flex items-center justify-between h-16 px-4" style={{ borderBottom: "1.5px solid rgba(220,200,210,0.4)" }}>
         <AnimatePresence mode="wait">
           {!collapsed && (
             <motion.div
@@ -63,28 +64,28 @@ export function Sidebar() {
               exit={{ opacity: 0, width: 0 }}
               className="flex items-center gap-3"
             >
-              <div className="w-8 h-8 rounded-sm bg-gold-500/10 flex items-center justify-center border border-gold-500/20">
-                <span className="text-gold-400 font-display font-bold text-lg">M</span>
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF6B9D,#D4AF37)", boxShadow: "0 2px 8px rgba(255,107,157,0.3)" }}>
+                <span style={{ color: "#fff", fontFamily: "serif", fontWeight: "bold", fontSize: "1.1rem" }}>M</span>
               </div>
-              <span className="font-display text-lg font-bold gold-text whitespace-nowrap">
+              <span className="font-display text-lg font-bold whitespace-nowrap" style={{ color: "#1E1428" }}>
                 MasManager
               </span>
             </motion.div>
           )}
         </AnimatePresence>
-        
+
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
-          className="text-void-500 hover:text-gold-400 hover:bg-gold-500/5"
+          style={{ color: "#C084A0" }}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
         {filteredNav.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
@@ -94,13 +95,16 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-sm transition-all duration-200 group",
-                isActive
-                  ? "bg-gold-500/5 text-gold-400 border-l-2 border-gold-500"
-                  : "text-void-400 hover:text-void-200 hover:bg-void-800/30 border-l-2 border-transparent"
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group",
               )}
+              style={isActive
+                ? { background: "rgba(255,107,157,0.1)", color: "#D63384", borderLeft: "3px solid #FF6B9D", paddingLeft: "calc(0.75rem - 3px)" }
+                : { color: "#7A6080" }
+              }
+              onMouseEnter={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "rgba(255,107,157,0.05)"; }}
+              onMouseLeave={e => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
-              <Icon className={cn("w-5 h-5 flex-shrink-0", isActive && "text-gold-400")} />
+              <Icon className="w-5 h-5 flex-shrink-0" />
               <AnimatePresence mode="wait">
                 {!collapsed && (
                   <motion.span
@@ -119,12 +123,10 @@ export function Sidebar() {
       </nav>
 
       {/* User Section */}
-      <div className="p-3 border-t border-void-800/50">
+      <div className="p-3" style={{ borderTop: "1.5px solid rgba(220,200,210,0.4)" }}>
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center border border-gold-500/20 flex-shrink-0">
-            <span className="text-gold-400 text-xs font-bold">
-              {user?.displayName?.charAt(0) || "U"}
-            </span>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "linear-gradient(135deg,#FFB3D1,#F5D76E)", color: "#1E1428", fontSize: "0.75rem", fontWeight: "bold" }}>
+            {user?.displayName?.charAt(0) || "U"}
           </div>
           <AnimatePresence mode="wait">
             {!collapsed && (
@@ -134,22 +136,20 @@ export function Sidebar() {
                 exit={{ opacity: 0, width: 0 }}
                 className="min-w-0"
               >
-                <p className="text-sm font-medium text-void-200 truncate">
+                <p className="text-sm font-medium truncate" style={{ color: "#1E1428" }}>
                   {user?.displayName}
                 </p>
-                <p className="text-xs text-void-500 capitalize">{user?.role}</p>
+                <p className="text-xs capitalize" style={{ color: "#C084A0" }}>{user?.role}</p>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-        
+
         <Button
           variant="ghost"
           onClick={logout}
-          className={cn(
-            "w-full mt-2 text-void-500 hover:text-crimson hover:bg-crimson/5",
-            collapsed && "px-3"
-          )}
+          className={cn("w-full mt-2", collapsed && "px-3")}
+          style={{ color: "#C084A0" }}
         >
           <LogOut className="w-4 h-4" />
           {!collapsed && <span className="ml-2 text-sm">Sign Out</span>}
