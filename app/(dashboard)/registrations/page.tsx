@@ -1,18 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Search, Plus, Filter, Download, MoreHorizontal, User,
-  CreditCard, Loader2, Check, Pencil, Trash2,
+  Search, Plus, Filter, Download, User,
+  CreditCard, Loader2, Check, Pencil, Trash2, AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { CostumeTypeLabels, type PaymentStatus, type Registration, type CostumeType } from "@/types";
 import {
   getRegistrations, createRegistration, updateRegistration,
@@ -28,9 +25,15 @@ const inputStyle: React.CSSProperties = {
 };
 
 function PaymentBadge({ status }: { status: PaymentStatus }) {
-  if (status === "paid")    return <Badge className="badge-emerald">Paid</Badge>;
-  if (status === "partial") return <Badge className="badge-gold">Partial</Badge>;
-  return <Badge className="badge-crimson">Unpaid</Badge>;
+  if (status === "paid") return (
+    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D040" }}>Paid</span>
+  );
+  if (status === "partial") return (
+    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#FEF9C3", color: "#854D0E", border: "1px solid #FDE04740" }}>Partial</span>
+  );
+  return (
+    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA40" }}>Unpaid</span>
+  );
 }
 
 // ── Registration form ─────────────────────────────────────────────────────────
@@ -277,22 +280,26 @@ export default function RegistrationsPage() {
   });
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="page-header">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Registrations</h1>
-          <p className="text-void-400 mt-1">
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#1E2029", margin: 0 }} className="font-display">Registrations</h1>
+          <p style={{ color: "#6B7280", marginTop: "0.2rem", fontSize: "0.9rem" }}>
             {loading ? "Loading…" : `${registrations.length} participants registered for 2026`}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="border-void-700 text-void-300 hover:bg-void-800">
-            <Download className="w-4 h-4 mr-2" /> Export
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button variant="outline" style={{ borderColor: "#E5E7EB", color: "#6B7280" }}>
+            <Download style={{ width: "1rem", height: "1rem", marginRight: "0.4rem" }} /> Export
           </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button className="gold-btn"><Plus className="w-4 h-4 mr-2" /> Add Registration</Button>
+              <Button style={{ background: "#1A73E8", color: "#fff", border: "none", fontWeight: 600, borderRadius: "0.75rem" }}>
+                <Plus style={{ width: "1rem", height: "1rem", marginRight: "0.4rem" }} /> Add Registration
+              </Button>
             </DialogTrigger>
             <DialogContent style={{
               position: "fixed", top: "50%", left: "50%",
@@ -316,28 +323,32 @@ export default function RegistrationsPage() {
 
       {/* Filters */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-void-500" />
-          <Input placeholder="Search by name, parent, or phone…" value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)} className="luxury-input pl-10" />
+        style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: "14rem" }}>
+          <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", width: "1rem", height: "1rem", color: "#9CA3AF" }} />
+          <input
+            placeholder="Search by name, parent, or phone…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ ...inputStyle, paddingLeft: "2.25rem" }}
+          />
         </div>
         <Select value={costumeFilter} onValueChange={setCostumeFilter}>
-          <SelectTrigger className="luxury-input w-full sm:w-[200px]">
-            <Filter className="w-4 h-4 mr-2 text-void-500" />
+          <SelectTrigger style={{ width: "13rem", border: "1.5px solid #E5E7EB", borderRadius: "0.625rem", background: "#FFFFFF", color: "#1E2029", fontSize: "0.875rem" }}>
+            <Filter style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#9CA3AF" }} />
             <SelectValue placeholder="Costume Type" />
           </SelectTrigger>
-          <SelectContent className="bg-void-900 border-void-700">
+          <SelectContent>
             <SelectItem value="all">All Costumes</SelectItem>
             {Object.entries(CostumeTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-          <SelectTrigger className="luxury-input w-full sm:w-[180px]">
-            <CreditCard className="w-4 h-4 mr-2 text-void-500" />
+          <SelectTrigger style={{ width: "11rem", border: "1.5px solid #E5E7EB", borderRadius: "0.625rem", background: "#FFFFFF", color: "#1E2029", fontSize: "0.875rem" }}>
+            <CreditCard style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#9CA3AF" }} />
             <SelectValue placeholder="Payment" />
           </SelectTrigger>
-          <SelectContent className="bg-void-900 border-void-700">
+          <SelectContent>
             <SelectItem value="all">All Payments</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
             <SelectItem value="partial">Partial</SelectItem>
@@ -346,153 +357,157 @@ export default function RegistrationsPage() {
         </Select>
       </motion.div>
 
-      {/* Loading / error states */}
+      {/* Loading state */}
       {loading && (
-        <div className="flex items-center justify-center h-48 gap-3 text-void-400">
-          <Loader2 className="w-6 h-6 animate-spin" />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4rem", gap: "0.75rem", color: "#9CA3AF" }}>
+          <Loader2 style={{ width: "1.5rem", height: "1.5rem" }} className="animate-spin" />
           <span>Loading registrations…</span>
         </div>
       )}
+
+      {/* Error state */}
       {!loading && loadError && (
-        <div className="flex flex-col items-center justify-center h-48 gap-3 text-center">
-          <p className="text-crimson font-medium">Could not load registrations</p>
-          <p className="text-sm text-void-400 max-w-md">{loadError}</p>
-          <Button className="gold-btn mt-2" onClick={load}>Retry</Button>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem", gap: "0.75rem", textAlign: "center" }}>
+          <AlertCircle style={{ width: "2rem", height: "2rem", color: "#DC2626" }} />
+          <p style={{ fontWeight: 600, color: "#DC2626" }}>Could not load registrations</p>
+          <p style={{ fontSize: "0.875rem", color: "#6B7280", maxWidth: "28rem" }}>{loadError}</p>
+          <button onClick={load} style={{ marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Desktop table */}
+      {/* Table */}
       {!loading && !loadError && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="hidden md:block">
-          <Card className="glass-card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="luxury-table w-full">
-                <thead>
-                  <tr>
-                    <th>Participant</th>
-                    <th>Costume</th>
-                    <th>Parent</th>
-                    <th>Size</th>
-                    <th>Payment</th>
-                    <th>Balance</th>
-                    <th className="w-16"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((reg, i) => (
-                    <motion.tr key={reg.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.03 }} className="group cursor-pointer">
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center border border-gold-500/20">
-                            <User className="w-4 h-4 text-gold-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground">{reg.firstName} {reg.lastName}</p>
-                            <p className="text-xs text-void-500">{reg.gender === "boy" ? "Boy" : "Girl"}{reg.age ? `, ${reg.age}y` : ""}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="text-sm text-void-300">{CostumeTypeLabels[reg.costumeType]}</span>
-                        <p className="text-xs text-void-500">{reg.style}</p>
-                      </td>
-                      <td>
-                        <span className="text-sm text-void-300">{reg.parentName}</span>
-                        {reg.parentPhone && <p className="text-xs text-void-500">{reg.parentPhone}</p>}
-                      </td>
-                      <td>
-                        <span className="text-sm text-void-300">{reg.topSize}</span>
-                        <p className="text-xs text-void-500">{reg.bandSize}</p>
-                      </td>
-                      <td><PaymentBadge status={reg.paymentStatus} /></td>
-                      <td>
-                        <span className={cn("text-sm font-medium", reg.balanceOwing > 0 ? "text-crimson" : "text-emerald")}>
-                          {formatCurrency(reg.balanceOwing)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => setEditReg(reg)}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.25rem", borderRadius: "0.4rem" }}
-                            onMouseEnter={e => (e.currentTarget.style.color = "#1A73E8")}
-                            onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>
-                            <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
-                          </button>
-                          <button onClick={() => setDeleteReg(reg)}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.25rem", borderRadius: "0.4rem" }}
-                            onMouseEnter={e => (e.currentTarget.style.color = "#DC2626")}
-                            onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>
-                            <Trash2 style={{ width: "0.85rem", height: "0.85rem" }} />
-                          </button>
-                        </div>
-                      </td>
-                    </motion.tr>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
+          <div className="overflow-x-auto">
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #F3F4F6" }}>
+                  {["Participant", "Costume", "Parent", "Size", "Payment", "Balance", ""].map((h, idx) => (
+                    <th key={idx} style={{ padding: "0.6rem 1rem", textAlign: "left", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#9CA3AF", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#9CA3AF" }}>No registrations match your filters</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((reg, i) => (
+                  <motion.tr key={reg.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    style={{ borderBottom: i < filtered.length - 1 ? "1px solid #F9FAFB" : "none" }}
+                    className="group">
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div style={{ width: "2rem", height: "2rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", border: "1px solid rgba(26,115,232,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <User style={{ width: "1rem", height: "1rem", color: "#1A73E8" }} />
+                        </div>
+                        <div>
+                          <p style={{ fontWeight: 600, color: "#1E2029", margin: 0, fontSize: "0.875rem" }}>{reg.firstName} {reg.lastName}</p>
+                          <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.gender === "boy" ? "Boy" : "Girl"}{reg.age ? `, ${reg.age}y` : ""}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{CostumeTypeLabels[reg.costumeType]}</p>
+                      {reg.style && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.style}</p>}
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{reg.parentName}</p>
+                      {reg.parentPhone && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.parentPhone}</p>}
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{reg.topSize || "—"}</p>
+                      {reg.bandSize && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.bandSize}</p>}
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <PaymentBadge status={reg.paymentStatus} />
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A" }}>
+                        {formatCurrency(reg.balanceOwing)}
+                      </span>
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", opacity: 0 }} className="group-hover:opacity-100" >
+                        <button onClick={() => setEditReg(reg)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.25rem", borderRadius: "0.4rem" }}
+                          onMouseEnter={e => (e.currentTarget.style.color = "#1A73E8")}
+                          onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>
+                          <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+                        </button>
+                        <button onClick={() => setDeleteReg(reg)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.25rem", borderRadius: "0.4rem" }}
+                          onMouseEnter={e => (e.currentTarget.style.color = "#DC2626")}
+                          onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>
+                          <Trash2 style={{ width: "0.85rem", height: "0.85rem" }} />
+                        </button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#9CA3AF" }}>No registrations match your filters</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </motion.div>
       )}
 
       {/* Mobile cards */}
       {!loading && !loadError && (
-        <div className="md:hidden space-y-3">
-          {filtered.map((reg, i) => (
-            <motion.div key={reg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="glass-card p-4 rounded-lg border border-void-800/50">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gold-500/10 flex items-center justify-center border border-gold-500/20">
-                    <User className="w-5 h-5 text-gold-400" />
+        <>
+          <style>{`.reg-mobile{display:none}@media(max-width:767px){.reg-desktop{display:none}.reg-mobile{display:flex;flex-direction:column;gap:0.75rem}}`}</style>
+          <div className="reg-mobile">
+            {filtered.map((reg, i) => (
+              <motion.div key={reg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", border: "1px solid rgba(26,115,232,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <User style={{ width: "1.25rem", height: "1.25rem", color: "#1A73E8" }} />
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, color: "#1E2029", margin: 0 }}>{reg.firstName} {reg.lastName}</p>
+                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.gender === "boy" ? "Boy" : "Girl"}{reg.age ? `, ${reg.age}y` : ""}</p>
+                    </div>
                   </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <PaymentBadge status={reg.paymentStatus} />
+                    <button onClick={() => setEditReg(reg)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.2rem" }}>
+                      <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+                    </button>
+                  </div>
+                </div>
+                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #F3F4F6", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.875rem" }}>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Costume</p><p style={{ color: "#374151", margin: 0 }}>{CostumeTypeLabels[reg.costumeType]}</p></div>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Style</p><p style={{ color: "#374151", margin: 0 }}>{reg.style || "—"}</p></div>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Parent</p><p style={{ color: "#374151", margin: 0 }}>{reg.parentName}</p></div>
                   <div>
-                    <p className="font-medium text-foreground">{reg.firstName} {reg.lastName}</p>
-                    <p className="text-xs text-void-500">{reg.gender === "boy" ? "Boy" : "Girl"}{reg.age ? `, ${reg.age}y` : ""}</p>
+                    <p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Balance</p>
+                    <p style={{ fontWeight: 600, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A", margin: 0 }}>{formatCurrency(reg.balanceOwing)}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <PaymentBadge status={reg.paymentStatus} />
-                  <button onClick={() => setEditReg(reg)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.2rem" }}>
-                    <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 pt-3 border-t border-void-800/50 grid grid-cols-2 gap-2 text-sm">
-                <div><p className="text-void-500 text-xs">Costume</p><p className="text-void-300">{CostumeTypeLabels[reg.costumeType]}</p></div>
-                <div><p className="text-void-500 text-xs">Style</p><p className="text-void-300">{reg.style || "—"}</p></div>
-                <div><p className="text-void-500 text-xs">Parent</p><p className="text-void-300">{reg.parentName}</p></div>
-                <div>
-                  <p className="text-void-500 text-xs">Balance</p>
-                  <p className={cn("font-medium", reg.balanceOwing > 0 ? "text-crimson" : "text-emerald")}>
-                    {formatCurrency(reg.balanceOwing)}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-          {!loading && filtered.length === 0 && (
-            <p className="text-center text-void-500 py-12">No registrations match your filters</p>
-          )}
-        </div>
+              </motion.div>
+            ))}
+            {filtered.length === 0 && (
+              <p style={{ textAlign: "center", color: "#9CA3AF", padding: "3rem 0" }}>No registrations match your filters</p>
+            )}
+          </div>
+        </>
       )}
 
       {/* Summary bar */}
       {!loading && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
-          className="flex flex-wrap gap-4 text-sm text-void-500">
-          <span>Total: <strong className="text-foreground">{filtered.length}</strong></span>
-          <span>Paid: <strong className="text-emerald">{filtered.filter(r => r.paymentStatus === "paid").length}</strong></span>
-          <span>Partial: <strong className="text-gold-400">{filtered.filter(r => r.paymentStatus === "partial").length}</strong></span>
-          <span>Unpaid: <strong className="text-crimson">{filtered.filter(r => r.paymentStatus === "unpaid").length}</strong></span>
-          <span className="ml-auto">
-            Outstanding: <strong className="text-crimson">{formatCurrency(filtered.reduce((s, r) => s + r.balanceOwing, 0))}</strong>
+          style={{ display: "flex", flexWrap: "wrap", gap: "1rem", fontSize: "0.875rem", color: "#6B7280" }}>
+          <span>Total: <strong style={{ color: "#1E2029" }}>{filtered.length}</strong></span>
+          <span>Paid: <strong style={{ color: "#16A34A" }}>{filtered.filter(r => r.paymentStatus === "paid").length}</strong></span>
+          <span>Partial: <strong style={{ color: "#D97706" }}>{filtered.filter(r => r.paymentStatus === "partial").length}</strong></span>
+          <span>Unpaid: <strong style={{ color: "#DC2626" }}>{filtered.filter(r => r.paymentStatus === "unpaid").length}</strong></span>
+          <span style={{ marginLeft: "auto" }}>
+            Outstanding: <strong style={{ color: "#DC2626" }}>{formatCurrency(filtered.reduce((s, r) => s + r.balanceOwing, 0))}</strong>
           </span>
         </motion.div>
       )}
@@ -523,16 +538,22 @@ export default function RegistrationsPage() {
 
       {/* Delete confirm */}
       <Dialog open={!!deleteReg} onOpenChange={v => !v && setDeleteReg(undefined)}>
-        <DialogContent className="glass-card border-border max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl text-crimson">Delete Registration</DialogTitle>
-          </DialogHeader>
-          <p className="text-foreground text-sm mt-2">
+        <DialogContent style={{
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          zIndex: 51, width: "calc(100% - 2rem)", maxWidth: "24rem",
+          background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem",
+          padding: "1.5rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", outline: "none",
+        }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#DC2626", margin: "0 0 0.75rem" }} className="font-display">Delete Registration</h2>
+          <p style={{ fontSize: "0.875rem", color: "#374151", marginBottom: "1.25rem" }}>
             Permanently delete <strong>{deleteReg?.firstName} {deleteReg?.lastName}</strong>?
           </p>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setDeleteReg(undefined)} className="border-border text-muted-foreground">Cancel</Button>
-            <Button disabled={deleting} onClick={async () => {
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button onClick={() => setDeleteReg(undefined)}
+              style={{ padding: "0.5rem 1.1rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button disabled={deleting} onClick={async () => {
               if (!deleteReg) return;
               setDeleting(true);
               try {
@@ -540,10 +561,10 @@ export default function RegistrationsPage() {
                 setRegistrations(prev => prev.filter(r => r.id !== deleteReg.id));
                 setDeleteReg(undefined);
               } finally { setDeleting(false); }
-            }} className="bg-crimson/10 border border-crimson/40 text-crimson hover:bg-crimson/20">
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+            }} style={{ padding: "0.5rem 1.1rem", borderRadius: "0.75rem", border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: deleting ? 0.7 : 1 }}>
+              {deleting ? <Loader2 style={{ width: "1rem", height: "1rem" }} className="animate-spin" /> : <Trash2 style={{ width: "1rem", height: "1rem" }} />}
               Delete
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
