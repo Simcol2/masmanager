@@ -25,7 +25,7 @@ export default function DashboardLayout({
   // Still loading auth state - show spinner
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FDF6F1" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#F3F4F6" }}>
         <div className="flex flex-col items-center gap-4">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF6B9D,#D4AF37)", boxShadow: "0 4px 20px rgba(255,107,157,0.3)" }}>
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: "1.6rem", fontFamily: "serif" }}>M</span>
@@ -40,7 +40,7 @@ export default function DashboardLayout({
   if (!user) return null;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FDF6F1" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#F3F4F6" }}>
       <Sidebar />
       <Header />
 

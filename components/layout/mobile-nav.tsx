@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
@@ -17,13 +16,13 @@ import {
 } from "lucide-react";
 
 const mobileNavItems = [
-  { href: "/", label: "Home", icon: LayoutDashboard, roles: ["admin", "registrar", "production"] },
-  { href: "/seasons", label: "Costumes", icon: CalendarDays, roles: ["admin", "registrar", "production"] },
-  { href: "/registrations", label: "Registrations", icon: Users, roles: ["admin", "registrar"] },
-  { href: "/gems", label: "Supplies", icon: Gem, roles: ["admin", "production"] },
-  { href: "/appliques", label: "Appliques", icon: Sparkles, roles: ["admin", "production"] },
-  { href: "/parent-shirts", label: "Shirts", icon: Shirt, roles: ["admin", "registrar"] },
-  { href: "/reports", label: "Reports", icon: BarChart3, roles: ["admin", "registrar", "production"] },
+  { href: "/", label: "Home", icon: LayoutDashboard, color: "#1A73E8", roles: ["admin", "registrar", "production"] },
+  { href: "/seasons", label: "Costumes", icon: CalendarDays, color: "#FF006E", roles: ["admin", "registrar", "production"] },
+  { href: "/registrations", label: "Register", icon: Users, color: "#FF6B35", roles: ["admin", "registrar"] },
+  { href: "/gems", label: "Supplies", icon: Gem, color: "#FFD60A", roles: ["admin", "production"] },
+  { href: "/appliques", label: "Appliques", icon: Sparkles, color: "#00BCD4", roles: ["admin", "production"] },
+  { href: "/parent-shirts", label: "Shirts", icon: Shirt, color: "#4CAF50", roles: ["admin", "registrar"] },
+  { href: "/reports", label: "Reports", icon: BarChart3, color: "#1A73E8", roles: ["admin", "registrar", "production"] },
 ];
 
 export function MobileNav() {
@@ -35,7 +34,7 @@ export function MobileNav() {
   );
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl z-50" style={{ background: "rgba(253,246,241,0.97)", borderTop: "1.5px solid rgba(220,200,210,0.5)", boxShadow: "0 -2px 8px rgba(180,100,140,0.06)" }}>
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50" style={{ background: "#FFFFFF", borderTop: "1px solid #E5E7EB", boxShadow: "0 -2px 8px rgba(0,0,0,0.08)" }}>
       <div className="flex items-center justify-around h-16">
         {filteredNav.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -45,11 +44,14 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors"
-              style={{ color: isActive ? "#FF6B9D" : "#C084A0" }}
+              className="flex flex-col items-center justify-center gap-1 px-3 py-2 transition-colors min-w-0"
+              style={{ color: isActive ? item.color : "#9CA3AF" }}
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="text-[10px] font-medium truncate">{item.label}</span>
+              {isActive && (
+                <span className="absolute bottom-1 w-1 h-1 rounded-full" style={{ background: item.color }} />
+              )}
             </Link>
           );
         })}

@@ -1,12 +1,15 @@
 import type { Config } from "tailwindcss";
+import { join } from "path";
+
+const ROOT = process.cwd();
 
 const config: Config = {
   darkMode: ["class"],
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-    "./lib/**/*.{js,ts,jsx,tsx}",
+    join(ROOT, "pages/**/*.{js,ts,jsx,tsx,mdx}"),
+    join(ROOT, "components/**/*.{js,ts,jsx,tsx,mdx}"),
+    join(ROOT, "app/**/*.{js,ts,jsx,tsx,mdx}"),
+    join(ROOT, "lib/**/*.{js,ts,jsx,tsx}"),
   ],
   safelist: [
     { pattern: /^lg:/ },
@@ -53,47 +56,67 @@ const config: Config = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        // Luxury Gold Palette
-        gold: {
-          50: "#FFFBEB",
-          100: "#FEF3C7",
-          200: "#FDE68A",
-          300: "#FCD34D",
-          400: "#FBBF24",
-          500: "#D4AF37", // Classic gold
-          600: "#B8860B", // Dark goldenrod
-          700: "#A67C00",
-          800: "#8B6914",
-          900: "#7C5800",
-          950: "#4A3500",
+        // Bold saturated palette
+        blue: {
+          50:  "#E8F0FE",
+          100: "#C2D4FC",
+          200: "#8EAFF9",
+          300: "#5589F5",
+          400: "#2B6EF0",
+          500: "#1A73E8", // Google blue
+          600: "#1557B0",
+          700: "#0D3F80",
+          800: "#082A58",
+          900: "#041830",
         },
-        // Deep navy palette
-        void: {
-          50:  "#F0F4FF",
-          100: "#D6E4FF",
-          200: "#ADC8FF",
-          300: "#84A9FF",
-          400: "#6690F5",
-          500: "#4D75D9",
-          600: "#3A5BAD",
-          700: "#284480",
-          800: "#1E3A5F",
-          900: "#142847",
-          950: "#0D1B2E", // Deepest navy
+        pink: {
+          50:  "#FFE4F0",
+          100: "#FFB3D4",
+          200: "#FF80B5",
+          300: "#FF4D96",
+          400: "#FF1A7A",
+          500: "#FF006E", // Hot magenta-pink
+          600: "#CC0058",
+          700: "#990042",
+          800: "#66002C",
+          900: "#330016",
         },
-        // Carnival palette
-        carnival: {
-          pink:   "#FF6B9D",
-          coral:  "#FF8C69",
-          teal:   "#00D4B8",
-          yellow: "#FFD700",
-          purple: "#9B5DE5",
-          lime:   "#80FF44",
+        coral: {
+          50:  "#FFF0EB",
+          100: "#FFD5C2",
+          200: "#FFB099",
+          300: "#FF8A6F",
+          400: "#FF6B35", // Vivid coral
+          500: "#FF5722",
+          600: "#E64A19",
+          700: "#BF360C",
+          800: "#8A2500",
+          900: "#4E1500",
         },
-        // Saturated accents
-        crimson: "#DC143C",
-        emerald: "#10B981",
-        royal: "#6D28D9",
+        yellow: {
+          50:  "#FFFDE7",
+          100: "#FFF9C4",
+          200: "#FFF176",
+          300: "#FFEE58",
+          400: "#FFEB3B",
+          500: "#FFD60A", // Electric yellow
+          600: "#F9A825",
+          700: "#F57F17",
+          800: "#E65100",
+          900: "#BF360C",
+        },
+        teal: {
+          50:  "#E0F7FA",
+          100: "#B2EBF2",
+          200: "#80DEEA",
+          300: "#4DD0E1",
+          400: "#26C6DA",
+          500: "#00BCD4",
+          600: "#0097A7",
+          700: "#00838F",
+          800: "#006064",
+          900: "#004D40",
+        },
         chart: {
           1: "hsl(var(--chart-1))",
           2: "hsl(var(--chart-2))",
@@ -116,9 +139,9 @@ const config: Config = {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
-        "gold-pulse": {
+        "pulse-ring": {
           "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.7" },
+          "50%": { opacity: "0.6" },
         },
         "slide-up": {
           "0%": { transform: "translateY(10px)", opacity: "0" },
@@ -131,14 +154,15 @@ const config: Config = {
       },
       animation: {
         shimmer: "shimmer 2s linear infinite",
-        "gold-pulse": "gold-pulse 2s ease-in-out infinite",
+        "pulse-ring": "pulse-ring 2s ease-in-out infinite",
         "slide-up": "slide-up 0.3s ease-out",
         "fade-in": "fade-in 0.2s ease-out",
       },
       backgroundImage: {
-        "gold-gradient": "linear-gradient(135deg, #D4AF37 0%, #FCD34D 50%, #B8860B 100%)",
-        "gold-shine": "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
-        "void-gradient": "linear-gradient(180deg, #0A0A0C 0%, #1A1A1F 100%)",
+        "blue-gradient": "linear-gradient(135deg, #1A73E8 0%, #5589F5 100%)",
+        "pink-gradient": "linear-gradient(135deg, #FF006E 0%, #FF4D96 100%)",
+        "coral-gradient": "linear-gradient(135deg, #FF5722 0%, #FF8A6F 100%)",
+        "yellow-gradient": "linear-gradient(135deg, #FFD60A 0%, #FFF176 100%)",
       },
     },
   },
