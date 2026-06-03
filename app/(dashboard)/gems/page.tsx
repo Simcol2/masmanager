@@ -42,7 +42,7 @@ const CATEGORY_COLORS: Record<SupplyCategory, string> = {
   tool:       "badge-gold",
   hardware:   "badge-gold",
   paint:      "badge-coral",
-  other:      "bg-void-700/30 text-void-300 border border-void-600/30",
+  other:      "badge-gold",
 };
 
 const UNITS = ["pcs", "metres", "cm", "grams", "kg", "ml", "L", "yards", "sheets"];
@@ -63,25 +63,25 @@ function PhotoUploader({ currentURL, uploading, uploadPct, onFileSelected, onRem
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div
-      className={cn("relative w-28 h-28 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0",
-        currentURL ? "border-carnival-teal/40" : "border-void-700 hover:border-carnival-teal/40")}
+      className="relative w-28 h-28 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0"
+      style={{ borderColor: currentURL ? "rgba(0,212,184,0.4)" : "rgba(220,200,210,0.7)" }}
       onClick={() => !currentURL && ref.current?.click()}
     >
       {uploading ? (
-        <div className="flex flex-col items-center gap-1"><Loader2 className="w-5 h-5 text-carnival-teal animate-spin" /><span className="text-xs text-void-400">{uploadPct}%</span></div>
+        <div className="flex flex-col items-center gap-1"><Loader2 className="w-5 h-5 animate-spin" style={{ color: "#00D4B8" }} /><span className="text-xs" style={{ color: "#C084A0" }}>{uploadPct}%</span></div>
       ) : currentURL ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={currentURL} alt="" className="w-full h-full object-cover rounded-lg" />
-          <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 hover:opacity-100 bg-void-950/70 rounded-lg transition-opacity">
-            <Button type="button" size="icon" variant="ghost" className="w-7 h-7 text-void-300 hover:text-white"
+          <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 hover:opacity-100 rounded-lg transition-opacity" style={{ background: "rgba(253,246,241,0.85)" }}>
+            <Button type="button" size="icon" variant="ghost" className="w-7 h-7" style={{ color: "#7A6080" }}
               onClick={e => { e.stopPropagation(); ref.current?.click(); }}><Upload className="w-3 h-3" /></Button>
-            <Button type="button" size="icon" variant="ghost" className="w-7 h-7 text-crimson hover:text-crimson"
+            <Button type="button" size="icon" variant="ghost" className="w-7 h-7" style={{ color: "#DC143C" }}
               onClick={e => { e.stopPropagation(); onRemove(); }}><X className="w-3 h-3" /></Button>
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center gap-1 text-void-600"><ImageIcon className="w-6 h-6" /><span className="text-[10px]">Photo</span></div>
+        <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}><ImageIcon className="w-6 h-6" /><span className="text-[10px]">Photo</span></div>
       )}
       <input ref={ref} type="file" accept="image/*" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) onFileSelected(f); e.target.value = ""; }} />
@@ -102,7 +102,7 @@ function ColourMultiSelect({ selected, onChange }: {
 
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-void-300">
+      <label className="text-sm font-medium text-foreground">
         Available Colours
         {selected.length > 0 && (
           <span className="ml-2 text-xs font-normal text-carnival-teal">
@@ -129,7 +129,7 @@ function ColourMultiSelect({ selected, onChange }: {
           <label key={c} className="flex items-center gap-2.5 px-2 py-1 rounded-md cursor-pointer transition-colors hover:bg-white/5">
             <input type="checkbox" checked={selected.includes(c)} onChange={() => toggle(c)}
               className="w-3.5 h-3.5 rounded accent-carnival-teal" />
-            <span className="text-sm text-void-200">{c}</span>
+            <span className="text-sm text-foreground">{c}</span>
           </label>
         ))}
       </div>
@@ -209,7 +209,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="glass-card border-void-800/50 max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="glass-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl gold-text">
             {isEdit ? `Edit - ${gem?.itemNumber}` : "New Supply Item"}
@@ -224,11 +224,11 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
               onRemove={async () => { if (photoURL) { await deleteFileByURL(photoURL); setPhotoURL(undefined); } }} />
             <div className="flex-1 space-y-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-void-300">Item Name</label>
+                <label className="text-sm font-medium text-foreground">Item Name</label>
                 <Input className="luxury-input" placeholder="e.g. AB Crystal SS16" value={name} onChange={e => setName(e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-void-300">Category</label>
+                <label className="text-sm font-medium text-foreground">Category</label>
                 <Select value={category} onValueChange={v => setCategory(v as SupplyCategory)}>
                   <SelectTrigger className="luxury-input"><SelectValue /></SelectTrigger>
                   <SelectContent style={{ background: "#0F2540", border: "1px solid rgba(255,255,255,0.15)" }}>
@@ -247,17 +247,17 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
           {/* Cost, qty, unit */}
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-void-300">Unit Cost ($)</label>
+              <label className="text-sm font-medium text-foreground">Unit Cost ($)</label>
               <Input type="number" step="0.001" min="0" className="luxury-input" value={unitCost}
                 onChange={e => setUnitCost(parseFloat(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-void-300">Qty on Hand</label>
+              <label className="text-sm font-medium text-foreground">Qty on Hand</label>
               <Input type="number" min="0" className="luxury-input" value={qtyOnHand}
                 onChange={e => setQtyOnHand(parseFloat(e.target.value) || 0)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-void-300">Unit</label>
+              <label className="text-sm font-medium text-foreground">Unit</label>
               <Select value={unit} onValueChange={setUnit}>
                 <SelectTrigger className="luxury-input"><SelectValue /></SelectTrigger>
                 <SelectContent style={{ background: "#0F2540", border: "1px solid rgba(255,255,255,0.15)" }}>
@@ -270,7 +270,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
           {/* Min order + supplier */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-void-300 flex items-center gap-1.5">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
                 <ShoppingCart className="w-3.5 h-3.5 text-carnival-coral" />
                 Min. Order
               </label>
@@ -278,7 +278,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                 onChange={e => setMinOrder(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-void-300">Supplier</label>
+              <label className="text-sm font-medium text-foreground">Supplier</label>
               <Input className="luxury-input" placeholder="e.g. Alibaba, McDonald & Wang" value={supplier}
                 onChange={e => setSupplier(e.target.value)} />
             </div>
@@ -286,7 +286,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
 
           {/* Product link */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-void-300 flex items-center gap-1.5">
+            <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5 text-carnival-teal" />
               Product Link
             </label>
@@ -296,7 +296,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
 
           {/* Notes */}
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-void-300">Notes</label>
+            <label className="text-sm font-medium text-foreground">Notes</label>
             <textarea
               rows={3}
               className="w-full rounded-md px-3 py-2 text-sm resize-none luxury-input"
@@ -308,7 +308,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
 
           {error && <p className="text-sm text-crimson">{error}</p>}
           <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="border-void-700 text-void-300">Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose} className="border-border text-muted-foreground">Cancel</Button>
             <Button type="submit" className="gold-btn" disabled={saving || uploading}>
               {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
               {isEdit ? "Save Changes" : "Add Item"}
@@ -327,20 +327,21 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}
-      className="glass-card rounded-lg border border-void-800/50 overflow-hidden group"
+      className="glass-card rounded-lg overflow-hidden group"
+      style={{ border: "1px solid rgba(220,200,210,0.5)" }}
     >
       {/* Photo */}
-      <div className="relative h-28 flex items-center justify-center" style={{ background: "rgba(13,27,46,0.6)" }}>
+      <div className="relative h-28 flex items-center justify-center" style={{ background: "rgba(245,238,232,0.8)" }}>
         {gem.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={gem.photoURL} alt={gem.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="flex flex-col items-center gap-1 text-void-700">
+          <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}>
             <Gem className="w-7 h-7" />
             <span className="text-xs">No photo</span>
           </div>
         )}
-        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(13,27,46,0.7)" }}>
+        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(253,246,241,0.85)" }}>
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37" }} onClick={onEdit}>
             <Pencil className="w-3 h-3 mr-1" /> Edit
           </Button>
@@ -353,7 +354,7 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
       {/* Info */}
       <div className="p-3 space-y-2">
         <div>
-          <p className="text-[10px] font-mono text-void-500">{gem.itemNumber}</p>
+          <p className="text-[10px] font-mono" style={{ color: "#C084A0" }}>{gem.itemNumber}</p>
           <p className="text-sm font-medium text-foreground leading-tight">{gem.name}</p>
         </div>
         <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 rounded-md", CATEGORY_COLORS[gem.category])}>
@@ -369,18 +370,18 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
               </span>
             ))}
             {gem.availableColours.length > 3 && (
-              <span className="text-[10px] text-void-500">+{gem.availableColours.length - 3}</span>
+              <span className="text-[10px]" style={{ color: "#C084A0" }}>+{gem.availableColours.length - 3}</span>
             )}
           </div>
         )}
         <div className="flex items-center justify-between text-xs">
-          <span className="text-carnival-yellow font-semibold">${gem.unitCost.toFixed(3)}<span className="text-void-500 font-normal">/{gem.unit}</span></span>
+          <span className="text-carnival-yellow font-semibold">${gem.unitCost.toFixed(3)}<span className="font-normal" style={{ color: "#C084A0" }}>/{gem.unit}</span></span>
           <span className={cn("font-medium", gem.quantityOnHand <= 0 ? "text-crimson" : "text-carnival-teal")}>
             {gem.quantityOnHand} {gem.unit}
           </span>
         </div>
         {gem.minOrder && (
-          <p className="text-[10px] text-void-500 flex items-center gap-1">
+          <p className="text-[10px] flex items-center gap-1" style={{ color: "#C084A0" }}">
             <ShoppingCart className="w-2.5 h-2.5" /> Min: {gem.minOrder}
           </p>
         )}
@@ -461,10 +462,10 @@ export default function GemsPage() {
             { label: "Total Items", value: gems.length, color: "text-carnival-teal" },
             { label: "In Stock", value: gems.filter(g => g.quantityOnHand > 0).length, color: "text-carnival-yellow" },
           ].map(s => (
-            <Card key={s.label} className="glass-card border-void-800/50">
+            <Card key={s.label} className="glass-card border-border">
               <CardContent className="p-4">
                 <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
-                <p className="text-xs text-void-500 mt-0.5">{s.label}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#C084A0" }}>{s.label}</p>
               </CardContent>
             </Card>
           ))}
@@ -484,7 +485,7 @@ export default function GemsPage() {
               className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors",
                 categoryFilter === k
                   ? "border-carnival-teal/50 text-carnival-teal bg-carnival-teal/10"
-                  : "border-void-700 text-void-400 hover:text-void-200"
+                  : "border-border text-muted-foreground hover:text-foreground"
               )}>
               {v}
             </button>
@@ -498,8 +499,8 @@ export default function GemsPage() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className="flex flex-col items-center justify-center h-48 gap-3 text-center">
           <p className="text-crimson font-medium">Could not load gems</p>
-          <p className="text-void-400 text-sm max-w-md">{loadError}</p>
-          <p className="text-void-500 text-xs max-w-md">
+          <p className="text-sm max-w-md" style={{ color: "#C084A0" }}>{loadError}</p>
+          <p className="text-xs max-w-md" style={{ color: "#C084A0" }}>
             Check Firebase Console → Firestore → Rules and make sure reads/writes are allowed for authenticated users.
           </p>
           <Button className="gold-btn mt-2" onClick={() => load(true)}>Retry</Button>
@@ -514,8 +515,8 @@ export default function GemsPage() {
             <Gem className="w-8 h-8 text-carnival-teal opacity-50" />
           </div>
           <div>
-            <p className="text-void-300 font-medium">No supply items yet</p>
-            <p className="text-void-500 text-sm mt-1">Add your rhinestones, trims, fabric and more</p>
+            <p className="text-foreground font-medium">No supply items yet</p>
+            <p className="text-sm mt-1" style={{ color: "#C084A0" }}>Add your rhinestones, trims, fabric and more</p>
           </div>
           <Button className="gold-btn" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add First Item</Button>
         </motion.div>
@@ -537,13 +538,13 @@ export default function GemsPage() {
 
       {/* Delete confirm */}
       <Dialog open={!!deleteGem_} onOpenChange={v => !v && setDeleteGem(undefined)}>
-        <DialogContent className="glass-card border-void-800/50 max-w-sm">
+        <DialogContent className="glass-card border-border max-w-sm">
           <DialogHeader><DialogTitle className="font-display text-xl text-crimson">Delete Supply</DialogTitle></DialogHeader>
-          <p className="text-void-300 text-sm mt-2">
+          <p className="text-foreground text-sm mt-2">
             Delete <strong className="text-foreground">{deleteGem_?.itemNumber} - {deleteGem_?.name}</strong>?
           </p>
           <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setDeleteGem(undefined)} className="border-void-700 text-void-300">Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteGem(undefined)} className="border-border text-muted-foreground">Cancel</Button>
             <Button disabled={deleting} onClick={async () => {
               if (!deleteGem_) return;
               setDeleting(true);
