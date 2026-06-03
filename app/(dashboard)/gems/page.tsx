@@ -360,10 +360,10 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
       style={{ border: "1px solid rgba(220,200,210,0.5)" }}
     >
       {/* Photo */}
-      <div style={{ position: "relative", height: "7rem", overflow: "hidden", background: "rgba(245,238,232,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "relative", height: "10rem", overflow: "hidden", background: "rgba(245,238,232,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {gem.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", padding: "0.5rem" }} />
         ) : (
           <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}>
             <Gem className="w-7 h-7" />
