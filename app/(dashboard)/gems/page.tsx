@@ -356,8 +356,8 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}
-      className="glass-card rounded-lg overflow-hidden group"
-      style={{ border: "1px solid rgba(220,200,210,0.5)" }}
+      className="glass-card rounded-xl overflow-hidden"
+      style={{ border: "1px solid rgba(220,200,210,0.5)", display: "flex", flexDirection: "column" }}
     >
       {/* Photo — 1:1 square */}
       <div style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "rgba(245,238,232,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -365,78 +365,83 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}>
-            <Gem className="w-7 h-7" />
-            <span className="text-xs">No photo</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.3rem", color: "#C084A0" }}>
+            <Gem style={{ width: "1.5rem", height: "1.5rem" }} />
+            <span style={{ fontSize: "0.65rem" }}>No photo</span>
           </div>
         )}
-        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(253,246,241,0.85)" }}>
-          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37" }} onClick={onEdit}>
-            <Pencil className="w-3 h-3 mr-1" /> Edit
-          </Button>
-          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ borderColor: "rgba(220,20,60,0.4)", color: "#DC143C" }} onClick={onDelete}>
-            <Trash2 className="w-3 h-3 mr-1" /> Del
-          </Button>
-        </div>
       </div>
 
       {/* Info */}
-      <div style={{ padding: "0.75rem 0.75rem 0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      <div style={{ padding: "0.65rem 0.7rem 0.5rem", display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1 }}>
 
-        {/* SKU + Title + Link */}
-        <div>
-          <p style={{ fontSize: "0.6rem", fontFamily: "monospace", letterSpacing: "0.05em", color: "#C084A0", marginBottom: "0.25rem" }}>
-            {gem.itemNumber}
+        {/* SKU */}
+        <p style={{ fontSize: "0.6rem", fontFamily: "monospace", letterSpacing: "0.05em", color: "#C084A0", lineHeight: 1 }}>
+          {gem.itemNumber}
+        </p>
+
+        {/* Title — clickable if supplier link exists */}
+        {gem.supplierLink ? (
+          <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
+            className="font-display"
+            style={{ fontSize: "0.95rem", fontWeight: 800, lineHeight: 1.2, color: "#00D4B8", textDecoration: "none", display: "flex", alignItems: "flex-start", gap: "0.25rem" }}
+            onClick={e => e.stopPropagation()}>
+            <span style={{ flex: 1 }}>{gem.name}</span>
+            <Link2 style={{ width: "0.75rem", height: "0.75rem", flexShrink: 0, marginTop: "0.15rem", opacity: 0.7 }} />
+          </a>
+        ) : (
+          <p className="font-display" style={{ fontSize: "0.95rem", fontWeight: 800, lineHeight: 1.2, color: "inherit" }}>
+            {gem.name}
           </p>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "0.35rem" }}>
-            <p className="font-display" style={{ fontSize: "0.9rem", fontWeight: 700, lineHeight: 1.25, flex: 1, color: "inherit" }}>
-              {gem.name}
-            </p>
-            {gem.supplierLink && (
-              <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
-                style={{ color: "#00D4B8", flexShrink: 0, marginTop: "0.15rem" }} onClick={e => e.stopPropagation()}>
-                <Link2 style={{ width: "0.875rem", height: "0.875rem" }} />
-              </a>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Category + Colours */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
           <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 rounded-md w-fit", CATEGORY_COLORS[gem.category])}>
             {CATEGORY_LABELS[gem.category]}
           </Badge>
           {gem.availableColours && gem.availableColours.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.2rem" }}>
               {gem.availableColours.slice(0, 3).map(c => (
-                <span key={c} style={{ fontSize: "0.65rem", padding: "0.1rem 0.45rem", borderRadius: "999px", background: "rgba(0,212,184,0.1)", color: "#00D4B8", border: "1px solid rgba(0,212,184,0.2)" }}>
+                <span key={c} style={{ fontSize: "0.6rem", padding: "0.1rem 0.4rem", borderRadius: "999px", background: "rgba(0,212,184,0.1)", color: "#00D4B8", border: "1px solid rgba(0,212,184,0.2)" }}>
                   {c}
                 </span>
               ))}
               {gem.availableColours.length > 3 && (
-                <span style={{ fontSize: "0.65rem", color: "#C084A0" }}>+{gem.availableColours.length - 3}</span>
+                <span style={{ fontSize: "0.6rem", color: "#C084A0" }}>+{gem.availableColours.length - 3}</span>
               )}
             </div>
           )}
         </div>
 
         {/* Price / Stock */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "0.5rem", borderTop: "1px solid rgba(220,200,210,0.25)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "0.4rem", marginTop: "auto", borderTop: "1px solid rgba(220,200,210,0.25)" }}>
           <div style={{ lineHeight: 1 }}>
-            <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#D4AF37" }}>${gem.unitCost.toFixed(3)}</span>
-            <span style={{ fontSize: "0.65rem", color: "#C084A0" }}>/{gem.unit}</span>
+            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#D4AF37" }}>${gem.unitCost.toFixed(3)}</span>
+            <span style={{ fontSize: "0.6rem", color: "#C084A0" }}>/{gem.unit}</span>
           </div>
-          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: gem.quantityOnHand <= 0 ? "#DC143C" : "#00D4B8" }}>
+          <span style={{ fontSize: "0.7rem", fontWeight: 600, color: gem.quantityOnHand <= 0 ? "#DC143C" : "#00D4B8" }}>
             {gem.quantityOnHand} {gem.unit}
           </span>
         </div>
 
         {gem.minOrder && (
-          <p style={{ fontSize: "0.65rem", display: "flex", alignItems: "center", gap: "0.25rem", color: "#C084A0", marginTop: "-0.15rem" }}>
-            <ShoppingCart style={{ width: "0.625rem", height: "0.625rem" }} /> Min: {gem.minOrder}
+          <p style={{ fontSize: "0.6rem", display: "flex", alignItems: "center", gap: "0.2rem", color: "#C084A0" }}>
+            <ShoppingCart style={{ width: "0.6rem", height: "0.6rem" }} /> Min: {gem.minOrder}
           </p>
         )}
+      </div>
 
+      {/* Always-visible action bar */}
+      <div style={{ display: "flex", borderTop: "1px solid rgba(220,200,210,0.25)", padding: "0.35rem 0.5rem", gap: "0.35rem" }}>
+        <button onClick={onEdit}
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", fontSize: "0.7rem", fontWeight: 600, color: "#D4AF37", background: "rgba(212,175,55,0.07)", border: "1px solid rgba(212,175,55,0.25)", borderRadius: "0.5rem", padding: "0.3rem", cursor: "pointer" }}>
+          <Pencil style={{ width: "0.65rem", height: "0.65rem" }} /> Edit
+        </button>
+        <button onClick={onDelete}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.3rem 0.5rem", color: "#DC143C", background: "rgba(220,20,60,0.07)", border: "1px solid rgba(220,20,60,0.2)", borderRadius: "0.5rem", cursor: "pointer" }}>
+          <Trash2 style={{ width: "0.65rem", height: "0.65rem" }} />
+        </button>
       </div>
     </motion.div>
   );
@@ -568,7 +573,7 @@ export default function GemsPage() {
       )}
 
       {!loading && filtered.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {filtered.map((g, i) => (
             <SupplyCard key={g.id} gem={g} index={i}
               onEdit={() => setEditGem(g)}
