@@ -5,6 +5,12 @@ import {
 import { db } from "@/lib/firebase";
 import type { GemSupply } from "@/types";
 
+function toFirestore(data: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(data).map(([k, v]) => [k, v === undefined ? null : v])
+  );
+}
+
 function fromFirestore(data: Record<string, unknown>): Record<string, unknown> {
   const out = { ...data };
   for (const key of ["createdAt", "updatedAt"]) {
@@ -56,7 +62,7 @@ export async function createGemSupply(
   // Generate outside transaction since it needs a full collection read
   const itemNumber = await generateItemNumber(data.category);
   const ref = await addDoc(collection(db, "gemSupplies"), {
-    ...data,
+    ...toFirestore(data as Record<string, unknown>),
     itemNumber,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -68,7 +74,10 @@ export async function updateGemSupply(
   id: string,
   data: Partial<Omit<GemSupply, "id" | "itemNumber" | "createdAt">>
 ): Promise<void> {
-  await updateDoc(doc(db, "gemSupplies", id), { ...data, updatedAt: serverTimestamp() });
+  await updateDoc(doc(db, "gemSupplies", id), {
+    ...toFirestore(data as Record<string, unknown>),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deleteGemSupply(id: string): Promise<void> {

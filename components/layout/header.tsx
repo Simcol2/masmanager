@@ -20,7 +20,7 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-64" style={{ background: "#FFFFFF", borderRight: "1px solid #E5E7EB" }}>
-              <Sidebar />
+              <Sidebar mobile />
             </SheetContent>
           </Sheet>
 
