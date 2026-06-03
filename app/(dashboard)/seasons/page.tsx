@@ -422,10 +422,10 @@ function CostumeCard({ costumeType, count, index, onViewDetails, stylePhotoURL, 
         )}
 
         <div style={{ marginBottom: "0.875rem" }}>
-          <div style={{ height: "10rem", overflow: "hidden", borderRadius: "0.85rem", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ aspectRatio: "1 / 1", width: "100%", overflow: "hidden", borderRadius: "0.85rem", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
             {stylePhotoURL ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={stylePhotoURL} alt={`${CostumeTypeLabels[costumeType]} style`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={stylePhotoURL} alt={`${CostumeTypeLabels[costumeType]} style`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.35rem", color: "#9CA3AF" }}>
                 <ImageIcon style={{ width: "1.4rem", height: "1.4rem" }} />

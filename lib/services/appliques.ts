@@ -4,6 +4,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -11,12 +12,11 @@ import {
   where,
   serverTimestamp,
   Timestamp,
-  runTransaction,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Applique, AppliqueUsage, CostumeType } from "@/types";
 
-// ── Timestamp helper ─────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function fromFirestore(data: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...data };
@@ -26,6 +26,13 @@ function fromFirestore(data: Record<string, unknown>): Record<string, unknown> {
     }
   }
   return out;
+}
+
+/** Firestore rejects `undefined` values — replace them with null or strip them */
+function toFirestore(data: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
 }
 
 // ── Item number generator ────────────────────────────────────────────────────
@@ -58,30 +65,26 @@ export async function getApplique(id: string): Promise<Applique | null> {
 export async function createApplique(
   data: Omit<Applique, "id" | "itemNumber" | "createdAt" | "updatedAt">
 ): Promise<Applique> {
-  // Generate item number inside a transaction to avoid races
-  let created: Applique | null = null;
-  await runTransaction(db, async (tx) => {
-    const itemNumber = await generateItemNumber();
-    const ref = doc(collection(db, "appliques"));
-    tx.set(ref, {
-      ...data,
-      itemNumber,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-    // We can't read the server timestamp inside the transaction, so we'll
-    // do a follow-up read after commit.
-    created = { ...data, id: ref.id, itemNumber, createdAt: new Date(), updatedAt: new Date() };
+  // Generate item number first (outside any transaction — safe for this app's scale)
+  const itemNumber = await generateItemNumber();
+  const ref = doc(collection(db, "appliques"));
+  const clean = toFirestore(data as Record<string, unknown>);
+  await setDoc(ref, {
+    ...clean,
+    itemNumber,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
-  return created!;
+  return { ...data, id: ref.id, itemNumber, createdAt: new Date(), updatedAt: new Date() };
 }
 
 export async function updateApplique(
   id: string,
   data: Partial<Omit<Applique, "id" | "itemNumber" | "createdAt">>
 ): Promise<void> {
+  const clean = toFirestore(data as Record<string, unknown>);
   await updateDoc(doc(db, "appliques", id), {
-    ...data,
+    ...clean,
     updatedAt: serverTimestamp(),
   });
 }
