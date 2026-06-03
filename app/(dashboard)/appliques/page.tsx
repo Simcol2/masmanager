@@ -99,7 +99,7 @@ function IngredientRow({ ingredient, gemSupplies, onChange, onRemove }: {
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1E2029", margin: 0 }} className="truncate">{ingredient.gemSupplyName}</p>
-        <p style={{ fontSize: "0.72rem", color: "#6B7280", margin: 0 }}>${ingredient.unitCost.toFixed(3)} / {gem?.unit ?? "pcs"}</p>
+        <p style={{ fontSize: "0.72rem", color: "#6B7280", margin: 0 }}>${ingredient.unitCost.toFixed(4)} / ea</p>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
         <label style={{ fontSize: "0.72rem", color: "#6B7280" }}>Qty:</label>
@@ -150,7 +150,7 @@ function AddIngredientRow({ gemSupplies, existingIds, onAdd }: {
         <SelectContent>
           {available.map(g => (
             <SelectItem key={g.id} value={g.id}>
-              {g.itemNumber} - {g.name}{g.availableColours?.length ? ` (${g.availableColours[0]})` : ""} - ${g.unitCost}/{g.unit}
+              {g.itemNumber} - {g.name}{g.availableColours?.length ? ` (${g.availableColours[0]})` : ""} - ${g.unitCost}/{g.costUnit}
             </SelectItem>
           ))}
         </SelectContent>
@@ -668,7 +668,7 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
                     <div>
                       <p style={{ fontSize: "0.65rem", fontWeight: 600, color: "#1E2029", lineHeight: 1.2, margin: 0 }}>{gem.name}</p>
                       <p style={{ fontSize: "0.6rem", color: "#9CA3AF", margin: "0.1rem 0 0" }}>{gem.itemNumber}</p>
-                      <p style={{ fontSize: "0.65rem", fontWeight: 700, color: "#1A73E8", margin: "0.1rem 0 0" }}>${gem.unitCost}/{gem.unit}</p>
+                      <p style={{ fontSize: "0.65rem", fontWeight: 700, color: "#1A73E8", margin: "0.1rem 0 0" }}>${gem.unitCost.toFixed(4)}/ea</p>
                     </div>
                   </button>
                 );

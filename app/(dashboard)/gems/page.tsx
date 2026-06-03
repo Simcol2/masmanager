@@ -11,51 +11,67 @@ import { uploadFile, deleteFileByURL } from "@/lib/services/storage";
 import type { GemSupply, SupplyCategory } from "@/types";
 
 const CATEGORY_LABELS: Record<SupplyCategory, string> = {
-  rhinestone: "Rhinestone",
-  gem:        "Gem / Stone",
-  trim:       "Trim",
-  fabric:     "Fabric",
-  feather:    "Feather",
-  frame:      "Frame / Base",
-  wire:       "Wire / Structure",
-  glue:       "Glue / Adhesive",
-  tool:       "Tool",
-  hardware:   "Hardware",
-  paint:      "Paint / Finish",
-  other:      "Other",
+  rhinestone:        "Rhinestone",
+  gem:               "Gem / Stone",
+  trim:              "Trim",
+  fabric:            "Fabric",
+  feather:           "Feather",
+  frame:             "Frame / Base",
+  wire:              "Wire / Structure",
+  elastic:           "Elastic / Cord",
+  chain:             "Chain",
+  applique_material: "Applique",
+  htv:               "HTV",
+  cardstock:         "Cardstock",
+  glue:              "Glue / Adhesive",
+  tool:              "Tool",
+  hardware:          "Hardware",
+  paint:             "Paint / Finish",
+  other:             "Other",
 };
 
 // Light-theme category badge colours
 const CATEGORY_BG: Record<SupplyCategory, string> = {
-  rhinestone: "#FDF2F8",
-  gem:        "#FEF9C3",
-  trim:       "#CCFBF1",
-  fabric:     "#EDE9FE",
-  feather:    "#ECFDF5",
-  frame:      "#FFF7ED",
-  wire:       "#FEF3C7",
-  glue:       "#FFF7ED",
-  tool:       "#FEF3C7",
-  hardware:   "#FEF3C7",
-  paint:      "#FFF7ED",
-  other:      "#F3F4F6",
+  rhinestone:        "#FDF2F8",
+  gem:               "#FEF9C3",
+  trim:              "#CCFBF1",
+  fabric:            "#EDE9FE",
+  feather:           "#ECFDF5",
+  frame:             "#FFF7ED",
+  wire:              "#FEF3C7",
+  elastic:           "#F0FDFA",
+  chain:             "#F8FAFC",
+  applique_material: "#FFF1F2",
+  htv:               "#F0FDF4",
+  cardstock:         "#FFF7ED",
+  glue:              "#FFF7ED",
+  tool:              "#F3F4F6",
+  hardware:          "#F3F4F6",
+  paint:             "#FFF7ED",
+  other:             "#F3F4F6",
 };
 const CATEGORY_COLOR: Record<SupplyCategory, string> = {
-  rhinestone: "#9D174D",
-  gem:        "#854D0E",
-  trim:       "#0F766E",
-  fabric:     "#6D28D9",
-  feather:    "#065F46",
-  frame:      "#9A3412",
-  wire:       "#92400E",
-  glue:       "#9A3412",
-  tool:       "#92400E",
-  hardware:   "#92400E",
-  paint:      "#9A3412",
-  other:      "#374151",
+  rhinestone:        "#9D174D",
+  gem:               "#854D0E",
+  trim:              "#0F766E",
+  fabric:            "#6D28D9",
+  feather:           "#065F46",
+  frame:             "#9A3412",
+  wire:              "#92400E",
+  elastic:           "#0F766E",
+  chain:             "#374151",
+  applique_material: "#BE123C",
+  htv:               "#15803D",
+  cardstock:         "#C2410C",
+  glue:              "#9A3412",
+  tool:              "#374151",
+  hardware:          "#374151",
+  paint:             "#9A3412",
+  other:             "#374151",
 };
 
-const UNITS = ["pcs", "metres", "cm", "grams", "kg", "ml", "L", "yards", "sheets"];
+// Units for cost and min-order dropdowns
+const COST_UNITS = ["pcs", "bag", "yard", "metre", "roll", "spool", "sheet", "feet", "gram", "kg", "box", "pack", "L"];
 
 const DEFAULT_SUPPLIERS = [
   "Alibaba",
@@ -196,10 +212,14 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
   const [category, setCategory] = useState<SupplyCategory>(gem?.category ?? "rhinestone");
   const [shape, setShape] = useState(gem?.shape ?? "");
   const [availableColours, setAvailableColours] = useState<string[]>(gem?.availableColours ?? []);
-  const [unitCost, setUnitCost] = useState(gem?.unitCost ?? 0);
-  const [qtyOnHand, setQtyOnHand] = useState(gem?.quantityOnHand ?? 0);
-  const [unit, setUnit] = useState(gem?.unit ?? "pcs");
-  const [minOrder, setMinOrder] = useState(gem?.minOrder ?? "");
+  // Cost: "$X for Y <unit>"
+  const [costAmount, setCostAmount] = useState(gem?.costAmount ?? 0);
+  const [costQty, setCostQty]       = useState(gem?.costQty ?? 1);
+  const [costUnit, setCostUnit]     = useState(gem?.costUnit ?? "pcs");
+  const [qtyOnHand, setQtyOnHand]   = useState(gem?.quantityOnHand ?? 0);
+  // Min order: "N <unit>"
+  const [minOrderQty, setMinOrderQty]   = useState(gem?.minOrderQty ?? 0);
+  const [minOrderUnit, setMinOrderUnit] = useState(gem?.minOrderUnit ?? "pcs");
   const [supplierLink, setSupplierLink] = useState(gem?.supplierLink ?? "");
   const [supplier, setSupplier] = useState(gem?.supplier ?? "");
   const [customSupplierMode, setCustomSupplierMode] = useState(
@@ -219,10 +239,12 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     setName(gem?.name ?? "");
     setCategory(gem?.category ?? "rhinestone");
     setAvailableColours(gem?.availableColours ?? []);
-    setUnitCost(gem?.unitCost ?? 0);
+    setCostAmount(gem?.costAmount ?? 0);
+    setCostQty(gem?.costQty ?? 1);
+    setCostUnit(gem?.costUnit ?? "pcs");
     setQtyOnHand(gem?.quantityOnHand ?? 0);
-    setUnit(gem?.unit ?? "pcs");
-    setMinOrder(gem?.minOrder ?? "");
+    setMinOrderQty(gem?.minOrderQty ?? 0);
+    setMinOrderUnit(gem?.minOrderUnit ?? "pcs");
     setSupplierLink(gem?.supplierLink ?? "");
     setSupplier(gem?.supplier ?? "");
     setCustomSupplierMode(!!(gem?.supplier && !DEFAULT_SUPPLIERS.includes(gem.supplier ?? "")));
@@ -247,10 +269,14 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     if (!name.trim()) { setError("Name is required"); return; }
     setSaving(true); setError("");
     try {
+      const perPieceCost = costQty > 0 ? +(costAmount / costQty).toFixed(6) : 0;
       const payload = {
-        name: name.trim(), category, shape: shape || undefined, availableColours, unitCost,
-        quantityOnHand: qtyOnHand, unit,
-        minOrder: minOrder || undefined,
+        name: name.trim(), category, shape: shape || undefined, availableColours,
+        costAmount, costQty, costUnit,
+        unitCost: perPieceCost,   // auto-calculated — used by applique builder
+        quantityOnHand: qtyOnHand,
+        minOrderQty,
+        minOrderUnit,
         supplierLink: supplierLink || undefined,
         supplier: supplier || undefined,
         notes: notes || undefined,
@@ -331,27 +357,62 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
             {/* Colours */}
             <ColourMultiSelect selected={availableColours} onChange={setAvailableColours} />
 
-            {/* Cost / Qty / Unit */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-              {field("Unit Cost ($)",
-                <input type="number" step="0.001" min="0" style={inputStyle} value={unitCost}
-                  onChange={e => setUnitCost(parseFloat(e.target.value) || 0)} />
+            {/* Cost structure */}
+            <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "0.875rem", padding: "0.875rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <p style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", margin: 0 }}>Cost</p>
+              {/* "$X for Y <unit>" */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem", alignItems: "end" }}>
+                {field("Amount paid ($)",
+                  <input type="number" step="0.01" min="0" style={inputStyle} value={costAmount || ""}
+                    placeholder="e.g. 13"
+                    onChange={e => setCostAmount(parseFloat(e.target.value) || 0)} />
+                )}
+                {field("Quantity covered",
+                  <input type="number" step="1" min="1" style={inputStyle} value={costQty || ""}
+                    placeholder="e.g. 200"
+                    onChange={e => setCostQty(parseFloat(e.target.value) || 1)} />
+                )}
+                {field("Unit",
+                  <select value={costUnit} onChange={e => setCostUnit(e.target.value)} style={inputStyle}>
+                    {COST_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                )}
+              </div>
+              {/* Auto-calculated per-piece cost */}
+              {costAmount > 0 && costQty > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem", borderRadius: "0.625rem", background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
+                  <span style={{ fontSize: "0.8rem", color: "#1D4ED8" }}>
+                    Individual piece cost:
+                    <strong style={{ marginLeft: "0.35rem", fontSize: "0.9rem" }}>
+                      ${(costAmount / costQty).toFixed(4)}
+                    </strong>
+                    <span style={{ color: "#93C5FD", marginLeft: "0.25rem" }}>per {costUnit}</span>
+                  </span>
+                  <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "#60A5FA" }}>
+                    ${costAmount.toFixed(2)} ÷ {costQty} {costUnit}
+                  </span>
+                </div>
               )}
-              {field("Qty on Hand",
-                <input type="number" min="0" style={inputStyle} value={qtyOnHand}
+              {/* Qty on hand */}
+              {field("Quantity on Hand",
+                <input type="number" min="0" style={inputStyle} value={qtyOnHand || ""}
+                  placeholder="How many do you have?"
                   onChange={e => setQtyOnHand(parseFloat(e.target.value) || 0)} />
-              )}
-              {field("Unit",
-                <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
-                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
               )}
             </div>
 
             {/* Min order / Supplier */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
               {field("Min. Order",
-                <input style={inputStyle} placeholder="e.g. 200/bag, 10 yards" value={minOrder} onChange={e => setMinOrder(e.target.value)} />,
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <input type="number" min="0" step="1" style={{ ...inputStyle, flex: 1 }} value={minOrderQty || ""}
+                    placeholder="e.g. 3"
+                    onChange={e => setMinOrderQty(parseFloat(e.target.value) || 0)} />
+                  <select value={minOrderUnit} onChange={e => setMinOrderUnit(e.target.value)}
+                    style={{ ...inputStyle, width: "auto", flexShrink: 0 }}>
+                    {COST_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>,
                 <ShoppingCart style={{ width: "0.85rem", height: "0.85rem", color: "#FF6B35" }} />
               )}
               {field("Supplier",
@@ -509,18 +570,29 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
 
         {/* Price / Stock */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "0.4rem", marginTop: "auto", borderTop: "1px solid #F3F4F6" }}>
-          <div style={{ lineHeight: 1 }}>
-            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#D97706" }}>${gem.unitCost.toFixed(3)}</span>
-            <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}>/{gem.unit}</span>
+          <div style={{ lineHeight: 1.3 }}>
+            {gem.costAmount > 0 ? (
+              <>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#D97706" }}>${gem.costAmount.toFixed(2)}</span>
+                <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}> / {gem.costQty} {gem.costUnit}</span>
+                <br />
+                <span style={{ fontSize: "0.62rem", color: "#6B7280" }}>${gem.unitCost.toFixed(4)}/ea</span>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#D97706" }}>${gem.unitCost.toFixed(4)}</span>
+                <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}>/ea</span>
+              </>
+            )}
           </div>
           <span style={{ fontSize: "0.7rem", fontWeight: 600, color: gem.quantityOnHand <= 0 ? "#DC2626" : "#16A34A" }}>
-            {gem.quantityOnHand} {gem.unit}
+            {gem.quantityOnHand} {gem.costUnit ?? "pcs"}
           </span>
         </div>
 
-        {gem.minOrder && (
+        {(gem.minOrderQty ?? 0) > 0 && (
           <p style={{ fontSize: "0.6rem", display: "flex", alignItems: "center", gap: "0.2rem", color: "#9CA3AF", margin: 0 }}>
-            <ShoppingCart style={{ width: "0.6rem", height: "0.6rem" }} /> Min: {gem.minOrder}
+            <ShoppingCart style={{ width: "0.6rem", height: "0.6rem" }} /> Min: {gem.minOrderQty} {gem.minOrderUnit}
           </p>
         )}
       </div>

@@ -22,16 +22,23 @@ function fromFirestore(data: Record<string, unknown>): Record<string, unknown> {
 
 // Category prefixes for item numbers
 const CATEGORY_PREFIX: Record<string, string> = {
-  rhinestone: "RHN",
-  gem:        "GEM",
-  trim:       "TRIM",
-  fabric:     "FAB",
-  glue:       "GLUE",
-  wire:       "WIRE",
-  feather:    "FEATH",
-  paint:      "PAINT",
-  hardware:   "HW",
-  other:      "MISC",
+  rhinestone:        "RHN",
+  gem:               "GEM",
+  trim:              "TRIM",
+  fabric:            "FAB",
+  feather:           "FEATH",
+  frame:             "FRM",
+  wire:              "WIRE",
+  elastic:           "ELST",
+  chain:             "CHN",
+  applique_material: "APL",
+  htv:               "HTV",
+  cardstock:         "CARD",
+  glue:              "GLUE",
+  paint:             "PAINT",
+  hardware:          "HW",
+  tool:              "TOOL",
+  other:             "MISC",
 };
 
 async function generateItemNumber(category: string): Promise<string> {

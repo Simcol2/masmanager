@@ -246,6 +246,11 @@ export const SupplyCategory = z.enum([
   "feather",
   "frame",
   "wire",
+  "elastic",
+  "chain",
+  "applique_material",
+  "htv",
+  "cardstock",
   "glue",
   "tool",
   "hardware",
@@ -260,10 +265,15 @@ export const GemSupplySchema = z.object({
   category: SupplyCategory,
   availableColours: z.array(z.string()).default([]), // multiselect, e.g. ["Gold", "Silver", "Clear"]
   photoURL: z.string().url().optional(),
-  unitCost: z.number().min(0).default(0),
-  quantityOnHand: z.number().min(0).default(0),
-  unit: z.string().default("pcs"),
-  minOrder: z.string().optional(),   // e.g. "200/bag", "10 yards min"
+  // Cost structure: "$X for Y <unit>" — e.g. "$13 for 200 pcs"
+  costAmount: z.number().min(0).default(0),     // price paid, e.g. 13
+  costQty: z.number().min(0).default(1),         // how many units that covers, e.g. 200
+  costUnit: z.string().default("pcs"),           // unit for cost qty: pcs, bag, yard, metre…
+  unitCost: z.number().min(0).default(0),        // auto-calc: costAmount / costQty (per individual piece)
+  quantityOnHand: z.number().min(0).default(0), // how many pieces/units you have
+  // Min order: e.g. "3 bags"
+  minOrderQty: z.number().min(0).default(0),
+  minOrderUnit: z.string().default("pcs"),
   supplierLink: z.string().optional(), // URL to product listing
   supplier: z.string().optional(),
   shape: z.string().optional(),            // e.g. "Round", "Teardrop", "Rectangle"
