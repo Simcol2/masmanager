@@ -124,7 +124,7 @@ function AddIngredientRow({ gemSupplies, existingIds, onAdd }: {
         <SelectContent style={{ background: "#0F2540", border: "1px solid rgba(255,255,255,0.15)" }}>
           {available.map(g => (
             <SelectItem key={g.id} value={g.id} style={{ color: "#F0F4FF" }}>
-              {g.itemNumber} - {g.name}{g.colour ? ` (${g.colour})` : ""} - ${g.unitCost}/{g.unit}
+              {g.itemNumber} - {g.name}{g.availableColours?.length ? ` (${g.availableColours[0]})` : ""} - ${g.unitCost}/{g.unit}
             </SelectItem>
           ))}
         </SelectContent>

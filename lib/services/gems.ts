@@ -91,6 +91,11 @@ const SEED_SUPPLIES = [
   { itemNumber: "004AB", name: "16x30mm Gold Tear Drop Gems",     category: "gem",        availableColours: ["Gold"],            unitCost: 0.05,  unit: "pcs",    quantityOnHand: 0, minOrder: "200/bag",      supplier: "Alibaba" },
   { itemNumber: "005AB", name: "Flat Back Resin Gems (Bulk)",     category: "rhinestone", availableColours: ["Multi / Mixed"],   unitCost: 0.42,  unit: "pcs",    quantityOnHand: 0, minOrder: "1000/bag",     supplier: "Alibaba" },
   { itemNumber: "006AB", name: "17x28 Iridescent Tear Drop Gems", category: "rhinestone", availableColours: ["Iridescent"],     unitCost: 0.05,  unit: "pcs",    quantityOnHand: 0, minOrder: "200/bag",      supplier: "Alibaba" },
+  // Rows 17-20 from spreadsheet - unnamed, to be named by user
+  { itemNumber: "007",   name: "Unnamed Gem (Shein)",              category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "50/bag",       supplier: "Shein",           supplierLink: "https://share.temu.com/BZFIpiuggjA" },
+  { itemNumber: "008",   name: "Unnamed Gem (John Bead)",          category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "20/bag",       supplier: "John Bead",       supplierLink: null },
+  { itemNumber: "009",   name: "Unnamed Gem (Temu)",               category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "50/bag",       supplier: "Temu",            supplierLink: "https://share.temu.com/A2bR0q7nXdA" },
+  { itemNumber: "010",   name: "Unnamed Gem (Temu 2)",             category: "gem",        availableColours: [],                  unitCost: 0,     unit: "pcs",    quantityOnHand: 0, minOrder: "20/bag",       supplier: "Temu",            supplierLink: "https://share.temu.com/HV3ITX0pLLA" },
 ];
 
 export async function seedGemSupplies(): Promise<void> {
