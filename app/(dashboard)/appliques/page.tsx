@@ -6,7 +6,6 @@ import {
   Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check,
   Sparkles, Package, ChevronDown, ChevronUp, Gem, Search, Hammer,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAppliques, createApplique, updateApplique, deleteApplique, getAppliqueUsagesByApplique, upsertAppliqueUsage, deleteAppliqueUsage } from "@/lib/services/appliques";
