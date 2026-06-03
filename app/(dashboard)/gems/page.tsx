@@ -359,11 +359,11 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
       className="glass-card rounded-lg overflow-hidden group"
       style={{ border: "1px solid rgba(220,200,210,0.5)" }}
     >
-      {/* Photo */}
-      <div style={{ position: "relative", height: "10rem", overflow: "hidden", background: "rgba(245,238,232,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {/* Photo — 1:1 square */}
+      <div style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "rgba(245,238,232,0.8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {gem.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", padding: "0.5rem" }} />
+          <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}>
             <Gem className="w-7 h-7" />
@@ -384,7 +384,15 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
       <div className="p-3 space-y-2">
         <div>
           <p className="text-[10px] font-mono" style={{ color: "#C084A0" }}>{gem.itemNumber}</p>
-          <p className="text-sm font-medium text-foreground leading-tight">{gem.name}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            <p className="text-sm font-bold text-foreground leading-tight">{gem.name}</p>
+            {gem.supplierLink && (
+              <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
+                style={{ color: "#00D4B8", flexShrink: 0, lineHeight: 1 }} onClick={e => e.stopPropagation()}>
+                <Link2 style={{ width: "0.75rem", height: "0.75rem" }} />
+              </a>
+            )}
+          </div>
         </div>
         <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 rounded-md", CATEGORY_COLORS[gem.category])}>
           {CATEGORY_LABELS[gem.category]}
@@ -413,13 +421,6 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
           <p className="text-[10px] flex items-center gap-1" style={{ color: "#C084A0" }}>
             <ShoppingCart className="w-2.5 h-2.5" /> Min: {gem.minOrder}
           </p>
-        )}
-        {gem.supplierLink && (
-          <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
-            className="text-[10px] flex items-center gap-1 hover:underline"
-            style={{ color: "#00D4B8" }} onClick={e => e.stopPropagation()}>
-            <Link2 className="w-2.5 h-2.5" /> View listing
-          </a>
         )}
       </div>
     </motion.div>
