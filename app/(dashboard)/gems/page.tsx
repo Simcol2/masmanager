@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check, Gem, Link2, ShoppingCart } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check, Gem, Link2, ShoppingCart, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { getGemSupplies, createGemSupply, updateGemSupply, deleteGemSupply, seedGemSupplies } from "@/lib/services/gems";
+import { getGemSupplies, createGemSupply, updateGemSupply, deleteGemSupply, seedGemSupplies, deduplicateGemSupplies } from "@/lib/services/gems";
 import { uploadFile, deleteFileByURL } from "@/lib/services/storage";
 import type { GemSupply, SupplyCategory } from "@/types";
 
@@ -29,20 +25,34 @@ const CATEGORY_LABELS: Record<SupplyCategory, string> = {
   other:      "Other",
 };
 
-// Carnival-flavoured category colours
-const CATEGORY_COLORS: Record<SupplyCategory, string> = {
-  rhinestone: "badge-pink",
-  gem:        "badge-yellow",
-  trim:       "badge-teal",
-  fabric:     "badge-purple",
-  feather:    "badge-lime",
-  frame:      "badge-coral",
-  wire:       "badge-gold",
-  glue:       "badge-coral",
-  tool:       "badge-gold",
-  hardware:   "badge-gold",
-  paint:      "badge-coral",
-  other:      "badge-gold",
+// Light-theme category badge colours
+const CATEGORY_BG: Record<SupplyCategory, string> = {
+  rhinestone: "#FDF2F8",
+  gem:        "#FEF9C3",
+  trim:       "#CCFBF1",
+  fabric:     "#EDE9FE",
+  feather:    "#ECFDF5",
+  frame:      "#FFF7ED",
+  wire:       "#FEF3C7",
+  glue:       "#FFF7ED",
+  tool:       "#FEF3C7",
+  hardware:   "#FEF3C7",
+  paint:      "#FFF7ED",
+  other:      "#F3F4F6",
+};
+const CATEGORY_COLOR: Record<SupplyCategory, string> = {
+  rhinestone: "#9D174D",
+  gem:        "#854D0E",
+  trim:       "#0F766E",
+  fabric:     "#6D28D9",
+  feather:    "#065F46",
+  frame:      "#9A3412",
+  wire:       "#92400E",
+  glue:       "#9A3412",
+  tool:       "#92400E",
+  hardware:   "#92400E",
+  paint:      "#9A3412",
+  other:      "#374151",
 };
 
 const UNITS = ["pcs", "metres", "cm", "grams", "kg", "ml", "L", "yards", "sheets"];
@@ -246,9 +256,15 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent>
-        {/* Title */}
-        <div style={{ marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid #F3F4F6" }}>
+      <DialogContent style={{
+        position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        zIndex: 51, width: "calc(100% - 2rem)", maxWidth: "32rem", maxHeight: "90vh",
+        overflow: "hidden", background: "#FFFFFF", border: "1px solid #E5E7EB",
+        borderRadius: "1rem", padding: 0, boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+        outline: "none", display: "flex", flexDirection: "column",
+      }}>
+        {/* Header */}
+        <div style={{ padding: "1.25rem 1.5rem 1rem", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
             <div style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Gem style={{ width: "1.1rem", height: "1.1rem", color: isEdit ? "#1A73E8" : "#FF006E" }} />
@@ -264,86 +280,88 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div style={{ overflowY: "auto", flex: 1, padding: "1.25rem 1.5rem" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
 
-          {/* Photo + name/category */}
-          <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
-            <PhotoUploader currentURL={photoURL} uploading={uploading} uploadPct={uploadPct}
-              onFileSelected={handlePhoto}
-              onRemove={async () => { if (photoURL) { await deleteFileByURL(photoURL); setPhotoURL(undefined); } }} />
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {field("Item Name",
-                <input style={inputStyle} placeholder="e.g. AB Crystal SS16" value={name} onChange={e => setName(e.target.value)} />
+            {/* Photo + name/category */}
+            <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+              <PhotoUploader currentURL={photoURL} uploading={uploading} uploadPct={uploadPct}
+                onFileSelected={handlePhoto}
+                onRemove={async () => { if (photoURL) { await deleteFileByURL(photoURL); setPhotoURL(undefined); } }} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                {field("Item Name",
+                  <input style={inputStyle} placeholder="e.g. AB Crystal SS16" value={name} onChange={e => setName(e.target.value)} />
+                )}
+                {field("Category",
+                  <select value={category} onChange={e => setCategory(e.target.value as SupplyCategory)} style={inputStyle}>
+                    {(Object.entries(CATEGORY_LABELS) as [SupplyCategory, string][]).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            {/* Colours */}
+            <ColourMultiSelect selected={availableColours} onChange={setAvailableColours} />
+
+            {/* Cost / Qty / Unit */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+              {field("Unit Cost ($)",
+                <input type="number" step="0.001" min="0" style={inputStyle} value={unitCost}
+                  onChange={e => setUnitCost(parseFloat(e.target.value) || 0)} />
               )}
-              {field("Category",
-                <select value={category} onChange={e => setCategory(e.target.value as SupplyCategory)} style={inputStyle}>
-                  {(Object.entries(CATEGORY_LABELS) as [SupplyCategory, string][]).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
+              {field("Qty on Hand",
+                <input type="number" min="0" style={inputStyle} value={qtyOnHand}
+                  onChange={e => setQtyOnHand(parseFloat(e.target.value) || 0)} />
+              )}
+              {field("Unit",
+                <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
+                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
               )}
             </div>
-          </div>
 
-          {/* Colours */}
-          <ColourMultiSelect selected={availableColours} onChange={setAvailableColours} />
+            {/* Min order / Supplier */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+              {field("Min. Order",
+                <input style={inputStyle} placeholder="e.g. 200/bag, 10 yards" value={minOrder} onChange={e => setMinOrder(e.target.value)} />,
+                <ShoppingCart style={{ width: "0.85rem", height: "0.85rem", color: "#FF6B35" }} />
+              )}
+              {field("Supplier",
+                <input style={inputStyle} placeholder="e.g. Alibaba" value={supplier} onChange={e => setSupplier(e.target.value)} />
+              )}
+            </div>
 
-          {/* Cost / Qty / Unit */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-            {field("Unit Cost ($)",
-              <input type="number" step="0.001" min="0" style={inputStyle} value={unitCost}
-                onChange={e => setUnitCost(parseFloat(e.target.value) || 0)} />
+            {/* Product link */}
+            {field("Product Link",
+              <input style={inputStyle} placeholder="https://www.alibaba.com/..." value={supplierLink} onChange={e => setSupplierLink(e.target.value)} />,
+              <Link2 style={{ width: "0.85rem", height: "0.85rem", color: "#00BCD4" }} />
             )}
-            {field("Qty on Hand",
-              <input type="number" min="0" style={inputStyle} value={qtyOnHand}
-                onChange={e => setQtyOnHand(parseFloat(e.target.value) || 0)} />
+
+            {/* Notes */}
+            {field("Notes",
+              <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }}
+                placeholder="Sizing, quality notes, where to find it…"
+                value={notes} onChange={e => setNotes(e.target.value)} />
             )}
-            {field("Unit",
-              <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
-                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            )}
-          </div>
 
-          {/* Min order / Supplier */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-            {field("Min. Order",
-              <input style={inputStyle} placeholder="e.g. 200/bag, 10 yards" value={minOrder} onChange={e => setMinOrder(e.target.value)} />,
-              <ShoppingCart style={{ width: "0.85rem", height: "0.85rem", color: "#FF6B35" }} />
-            )}
-            {field("Supplier",
-              <input style={inputStyle} placeholder="e.g. Alibaba" value={supplier} onChange={e => setSupplier(e.target.value)} />
-            )}
-          </div>
+            {error && <p style={{ fontSize: "0.875rem", color: "#DC2626", margin: 0 }}>{error}</p>}
 
-          {/* Product link */}
-          {field("Product Link",
-            <input style={inputStyle} placeholder="https://www.alibaba.com/..." value={supplierLink} onChange={e => setSupplierLink(e.target.value)} />,
-            <Link2 style={{ width: "0.85rem", height: "0.85rem", color: "#00BCD4" }} />
-          )}
-
-          {/* Notes */}
-          {field("Notes",
-            <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }}
-              placeholder="Sizing, quality notes, where to find it…"
-              value={notes} onChange={e => setNotes(e.target.value)} />
-          )}
-
-          {error && <p style={{ fontSize: "0.875rem", color: "#DC2626", margin: 0 }}>{error}</p>}
-
-          {/* Actions */}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", paddingTop: "0.5rem", borderTop: "1px solid #F3F4F6", marginTop: "0.25rem" }}>
-            <button type="button" onClick={onClose}
-              style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
-              Cancel
-            </button>
-            <button type="submit" disabled={saving || uploading}
-              style={{ padding: "0.55rem 1.5rem", borderRadius: "0.75rem", border: "none", background: isEdit ? "#1A73E8" : "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: (saving || uploading) ? 0.7 : 1 }}>
-              {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />}
-              {isEdit ? "Save Changes" : "Add Item"}
-            </button>
-          </div>
-        </form>
+            {/* Actions */}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", paddingTop: "0.5rem", borderTop: "1px solid #F3F4F6", marginTop: "0.25rem" }}>
+              <button type="button" onClick={onClose}
+                style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button type="submit" disabled={saving || uploading}
+                style={{ padding: "0.55rem 1.5rem", borderRadius: "0.75rem", border: "none", background: isEdit ? "#1A73E8" : "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: (saving || uploading) ? 0.7 : 1 }}>
+                {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />}
+                {isEdit ? "Save Changes" : "Add Item"}
+              </button>
+            </div>
+          </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -356,71 +374,91 @@ function SupplyCard({ gem, onEdit, onDelete, index }: {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.03 }}
-      className="glass-card rounded-lg overflow-hidden group"
-      style={{ border: "1px solid rgba(220,200,210,0.5)" }}
+      style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)", display: "flex", flexDirection: "column" }}
     >
-      {/* Photo */}
-      <div className="relative h-28 flex items-center justify-center" style={{ background: "rgba(245,238,232,0.8)" }}>
+      {/* Photo — 1:1 square */}
+      <div style={{ position: "relative", aspectRatio: "1 / 1", overflow: "hidden", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {gem.photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={gem.photoURL} alt={gem.name} className="w-full h-full object-cover" />
+          <img src={gem.photoURL} alt={gem.name} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}>
-            <Gem className="w-7 h-7" />
-            <span className="text-xs">No photo</span>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.3rem", color: "#9CA3AF" }}>
+            <Gem style={{ width: "1.5rem", height: "1.5rem" }} />
+            <span style={{ fontSize: "0.65rem" }}>No photo</span>
           </div>
         )}
-        <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(253,246,241,0.85)" }}>
-          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ borderColor: "rgba(212,175,55,0.4)", color: "#D4AF37" }} onClick={onEdit}>
-            <Pencil className="w-3 h-3 mr-1" /> Edit
-          </Button>
-          <Button size="sm" variant="outline" className="h-7 px-2 text-xs" style={{ borderColor: "rgba(220,20,60,0.4)", color: "#DC143C" }} onClick={onDelete}>
-            <Trash2 className="w-3 h-3 mr-1" /> Del
-          </Button>
-        </div>
       </div>
 
       {/* Info */}
-      <div className="p-3 space-y-2">
-        <div>
-          <p className="text-[10px] font-mono" style={{ color: "#C084A0" }}>{gem.itemNumber}</p>
-          <p className="text-sm font-medium text-foreground leading-tight">{gem.name}</p>
-        </div>
-        <Badge variant="outline" className={cn("text-xs px-1.5 py-0.5 rounded-md", CATEGORY_COLORS[gem.category])}>
-          {CATEGORY_LABELS[gem.category]}
-        </Badge>
-        {/* Colour pills */}
-        {gem.availableColours && gem.availableColours.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {gem.availableColours.slice(0, 3).map(c => (
-              <span key={c} className="text-[10px] px-1.5 py-0.5 rounded-full"
-                style={{ background: "rgba(0,212,184,0.1)", color: "#00D4B8", border: "1px solid rgba(0,212,184,0.2)" }}>
-                {c}
-              </span>
-            ))}
-            {gem.availableColours.length > 3 && (
-              <span className="text-[10px]" style={{ color: "#C084A0" }}>+{gem.availableColours.length - 3}</span>
-            )}
-          </div>
+      <div style={{ padding: "0.65rem 0.7rem 0.5rem", display: "flex", flexDirection: "column", gap: "0.4rem", flex: 1 }}>
+
+        {/* SKU */}
+        <p style={{ fontSize: "0.6rem", fontFamily: "monospace", letterSpacing: "0.05em", color: "#9CA3AF", lineHeight: 1, margin: 0 }}>
+          {gem.itemNumber}
+        </p>
+
+        {/* Title — clickable if supplier link exists */}
+        {gem.supplierLink ? (
+          <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
+            className="font-display"
+            style={{ fontSize: "0.95rem", fontWeight: 800, lineHeight: 1.2, color: "#1A73E8", textDecoration: "none", display: "flex", alignItems: "flex-start", gap: "0.25rem" }}
+            onClick={e => e.stopPropagation()}>
+            <span style={{ flex: 1 }}>{gem.name}</span>
+            <Link2 style={{ width: "0.75rem", height: "0.75rem", flexShrink: 0, marginTop: "0.15rem", opacity: 0.7 }} />
+          </a>
+        ) : (
+          <p className="font-display" style={{ fontSize: "0.95rem", fontWeight: 800, lineHeight: 1.2, color: "#1E2029", margin: 0 }}>
+            {gem.name}
+          </p>
         )}
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-carnival-yellow font-semibold">${gem.unitCost.toFixed(3)}<span className="font-normal" style={{ color: "#C084A0" }}>/{gem.unit}</span></span>
-          <span className={cn("font-medium", gem.quantityOnHand <= 0 ? "text-crimson" : "text-carnival-teal")}>
+
+        {/* Category + Colours */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+          <span style={{ fontSize: "0.7rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: "0.375rem", background: CATEGORY_BG[gem.category], color: CATEGORY_COLOR[gem.category], border: `1px solid ${CATEGORY_COLOR[gem.category]}30`, display: "inline-block", width: "fit-content" }}>
+            {CATEGORY_LABELS[gem.category]}
+          </span>
+          {gem.availableColours && gem.availableColours.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.2rem" }}>
+              {gem.availableColours.slice(0, 3).map(c => (
+                <span key={c} style={{ fontSize: "0.6rem", padding: "0.1rem 0.4rem", borderRadius: "999px", background: "rgba(0,188,212,0.08)", color: "#00838F", border: "1px solid rgba(0,188,212,0.2)" }}>
+                  {c}
+                </span>
+              ))}
+              {gem.availableColours.length > 3 && (
+                <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}>+{gem.availableColours.length - 3}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Price / Stock */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "0.4rem", marginTop: "auto", borderTop: "1px solid #F3F4F6" }}>
+          <div style={{ lineHeight: 1 }}>
+            <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#D97706" }}>${gem.unitCost.toFixed(3)}</span>
+            <span style={{ fontSize: "0.6rem", color: "#9CA3AF" }}>/{gem.unit}</span>
+          </div>
+          <span style={{ fontSize: "0.7rem", fontWeight: 600, color: gem.quantityOnHand <= 0 ? "#DC2626" : "#16A34A" }}>
             {gem.quantityOnHand} {gem.unit}
           </span>
         </div>
+
         {gem.minOrder && (
-          <p className="text-[10px] flex items-center gap-1" style={{ color: "#C084A0" }}>
-            <ShoppingCart className="w-2.5 h-2.5" /> Min: {gem.minOrder}
+          <p style={{ fontSize: "0.6rem", display: "flex", alignItems: "center", gap: "0.2rem", color: "#9CA3AF", margin: 0 }}>
+            <ShoppingCart style={{ width: "0.6rem", height: "0.6rem" }} /> Min: {gem.minOrder}
           </p>
         )}
-        {gem.supplierLink && (
-          <a href={gem.supplierLink} target="_blank" rel="noopener noreferrer"
-            className="text-[10px] flex items-center gap-1 hover:underline"
-            style={{ color: "#00D4B8" }} onClick={e => e.stopPropagation()}>
-            <Link2 className="w-2.5 h-2.5" /> View listing
-          </a>
-        )}
+      </div>
+
+      {/* Always-visible action bar */}
+      <div style={{ display: "flex", borderTop: "1px solid #F3F4F6", padding: "0.35rem 0.5rem", gap: "0.35rem" }}>
+        <button onClick={onEdit}
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.25rem", fontSize: "0.7rem", fontWeight: 600, color: "#1A73E8", background: "rgba(26,115,232,0.07)", border: "1px solid rgba(26,115,232,0.2)", borderRadius: "0.5rem", padding: "0.3rem", cursor: "pointer" }}>
+          <Pencil style={{ width: "0.65rem", height: "0.65rem" }} /> Edit
+        </button>
+        <button onClick={onDelete}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "0.3rem 0.5rem", color: "#DC2626", background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: "0.5rem", cursor: "pointer" }}>
+          <Trash2 style={{ width: "0.65rem", height: "0.65rem" }} />
+        </button>
       </div>
     </motion.div>
   );
@@ -435,7 +473,6 @@ export default function GemsPage() {
   const [editGem, setEditGem] = useState<GemSupply | undefined>();
   const [deleteGem_, setDeleteGem] = useState<GemSupply | undefined>();
   const [deleting, setDeleting] = useState(false);
-
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (autoSeed = false) => {
@@ -447,6 +484,7 @@ export default function GemsPage() {
           seedGemSupplies(),
           new Promise((_, rej) => setTimeout(() => rej(new Error("seed timeout")), 8000)),
         ]).catch((e) => console.warn("Seed skipped:", e.message));
+        await deduplicateGemSupplies().catch(() => {});
       }
       const data = await Promise.race([
         getGemSupplies(),
@@ -465,38 +503,36 @@ export default function GemsPage() {
   useEffect(() => { load(true); }, [load]);
 
   const filtered = categoryFilter === "all" ? gems : gems.filter(g => g.category === categoryFilter);
-  const totalValue = gems.reduce((s, g) => s + g.unitCost * g.quantityOnHand, 0);
-  const lowStock = gems.filter(g => g.quantityOnHand <= 0).length;
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="page-header">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">Supplies</h1>
-          <p className="mt-1" style={{ color: "#6B7280" }}>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#1E2029", margin: 0 }} className="font-display">Supplies</h1>
+          <p style={{ color: "#6B7280", marginTop: "0.2rem", fontSize: "0.9rem" }}>
             Gems, feathers, trims, fabric, frames, tools, hardware - everything you work with
           </p>
         </div>
-        <Button className="gold-btn" onClick={() => setAddOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Add Supply
+        <Button onClick={() => setAddOpen(true)} style={{ background: "#FF006E", color: "#fff", border: "none", fontWeight: 600, borderRadius: "0.75rem" }}>
+          <Plus style={{ width: "1rem", height: "1rem", marginRight: "0.4rem" }} /> Add Supply
         </Button>
       </motion.div>
 
       {/* Stats row */}
       {!loading && gems.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 gap-4">
+          style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "1rem" }}>
           {[
-            { label: "Total Items", value: gems.length, color: "text-carnival-teal" },
-            { label: "In Stock", value: gems.filter(g => g.quantityOnHand > 0).length, color: "text-carnival-yellow" },
+            { label: "Total Items", value: gems.length, color: "#00BCD4" },
+            { label: "In Stock", value: gems.filter(g => g.quantityOnHand > 0).length, color: "#FFD60A" },
           ].map(s => (
-            <Card key={s.label} className="glass-card border-border">
-              <CardContent className="p-4">
-                <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#C084A0" }}>{s.label}</p>
-              </CardContent>
-            </Card>
+            <div key={s.label} style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+              <p style={{ fontSize: "2rem", fontWeight: 800, color: s.color, margin: 0, lineHeight: 1 }}>{s.value}</p>
+              <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: "0.25rem", marginBottom: 0 }}>{s.label}</p>
+            </div>
           ))}
         </motion.div>
       )}
@@ -504,61 +540,77 @@ export default function GemsPage() {
       {/* Category filter pills */}
       {gems.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }}
-          className="flex flex-wrap gap-2">
+          style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
           {[{ k: "all", v: `All (${gems.length})` },
             ...Object.entries(CATEGORY_LABELS).map(([k, v]) => ({
               k, v: `${v} (${gems.filter(g => g.category === k).length})`
             })).filter(x => gems.some(g => g.category === x.k))
           ].map(({ k, v }) => (
             <button key={k} onClick={() => setCategoryFilter(k)}
-              className={cn("px-3 py-1 rounded-full text-xs font-medium border transition-colors",
-                categoryFilter === k
-                  ? "border-carnival-teal/50 text-carnival-teal bg-carnival-teal/10"
-                  : "border-border text-muted-foreground hover:text-foreground"
-              )}>
+              style={{
+                padding: "0.25rem 0.75rem", borderRadius: "999px", fontSize: "0.75rem", fontWeight: 500, cursor: "pointer", transition: "all 0.1s",
+                background: categoryFilter === k ? "#00BCD4" : "#FFFFFF",
+                color: categoryFilter === k ? "#FFFFFF" : "#6B7280",
+                border: `1px solid ${categoryFilter === k ? "#00BCD4" : "#E5E7EB"}`,
+              }}>
               {v}
             </button>
           ))}
         </motion.div>
       )}
 
-      {loading && <div className="flex items-center justify-center h-48"><Loader2 className="w-8 h-8 animate-spin text-carnival-teal" /></div>}
+      {/* Loading */}
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4rem" }}>
+          <Loader2 style={{ width: "2rem", height: "2rem", color: "#00BCD4" }} className="animate-spin" />
+        </div>
+      )}
 
+      {/* Error */}
       {!loading && loadError && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center h-48 gap-3 text-center">
-          <p className="text-crimson font-medium">Could not load gems</p>
-          <p className="text-sm max-w-md" style={{ color: "#C084A0" }}>{loadError}</p>
-          <p className="text-xs max-w-md" style={{ color: "#C084A0" }}>
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem", gap: "0.75rem", textAlign: "center" }}>
+          <AlertCircle style={{ width: "2rem", height: "2rem", color: "#DC2626" }} />
+          <p style={{ fontWeight: 600, color: "#DC2626", margin: 0 }}>Could not load gems</p>
+          <p style={{ fontSize: "0.875rem", color: "#6B7280", maxWidth: "28rem", margin: 0 }}>{loadError}</p>
+          <p style={{ fontSize: "0.75rem", color: "#9CA3AF", maxWidth: "28rem", margin: 0 }}>
             Check Firebase Console → Firestore → Rules and make sure reads/writes are allowed for authenticated users.
           </p>
-          <Button className="gold-btn mt-2" onClick={() => load(true)}>Retry</Button>
+          <button onClick={() => load(true)} style={{ marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+            Retry
+          </button>
         </motion.div>
       )}
 
-      {!loading && gems.length === 0 && (
+      {/* Empty state */}
+      {!loading && gems.length === 0 && !loadError && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center h-64 gap-4 text-center">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(0,212,184,0.07)", border: "1px solid rgba(0,212,184,0.15)" }}>
-            <Gem className="w-8 h-8 text-carnival-teal opacity-50" />
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "5rem 1rem", gap: "1rem", textAlign: "center" }}>
+          <div style={{ width: "4rem", height: "4rem", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,188,212,0.07)", border: "1px solid rgba(0,188,212,0.15)" }}>
+            <Gem style={{ width: "2rem", height: "2rem", color: "#00BCD4", opacity: 0.5 }} />
           </div>
           <div>
-            <p className="text-foreground font-medium">No supply items yet</p>
-            <p className="text-sm mt-1" style={{ color: "#C084A0" }}>Add your rhinestones, trims, fabric and more</p>
+            <p style={{ fontWeight: 600, color: "#1E2029", margin: 0 }}>No supply items yet</p>
+            <p style={{ fontSize: "0.875rem", color: "#6B7280", marginTop: "0.25rem", marginBottom: 0 }}>Add your rhinestones, trims, fabric and more</p>
           </div>
-          <Button className="gold-btn" onClick={() => setAddOpen(true)}><Plus className="w-4 h-4 mr-2" /> Add First Item</Button>
+          <button onClick={() => setAddOpen(true)} style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#fff", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <Plus style={{ width: "1rem", height: "1rem" }} /> Add First Item
+          </button>
         </motion.div>
       )}
 
+      {/* Grid */}
       {!loading && filtered.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {filtered.map((g, i) => (
-            <SupplyCard key={g.id} gem={g} index={i}
-              onEdit={() => setEditGem(g)}
-              onDelete={() => setDeleteGem(g)} />
-          ))}
-        </div>
+        <>
+          <style>{`.gems-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.75rem}@media(min-width:1024px){.gems-grid{grid-template-columns:repeat(4,1fr)}}`}</style>
+          <div className="gems-grid">
+            {filtered.map((g, i) => (
+              <SupplyCard key={g.id} gem={g} index={i}
+                onEdit={() => setEditGem(g)}
+                onDelete={() => setDeleteGem(g)} />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Add / Edit dialogs */}
@@ -567,14 +619,22 @@ export default function GemsPage() {
 
       {/* Delete confirm */}
       <Dialog open={!!deleteGem_} onOpenChange={v => !v && setDeleteGem(undefined)}>
-        <DialogContent className="glass-card border-border max-w-sm">
-          <DialogHeader><DialogTitle className="font-display text-xl text-crimson">Delete Supply</DialogTitle></DialogHeader>
-          <p className="text-foreground text-sm mt-2">
-            Delete <strong className="text-foreground">{deleteGem_?.itemNumber} - {deleteGem_?.name}</strong>?
+        <DialogContent style={{
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          zIndex: 51, width: "calc(100% - 2rem)", maxWidth: "24rem",
+          background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem",
+          padding: "1.5rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", outline: "none",
+        }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#DC2626", margin: "0 0 0.75rem" }} className="font-display">Delete Supply</h2>
+          <p style={{ fontSize: "0.875rem", color: "#374151", marginBottom: "1.25rem" }}>
+            Delete <strong>{deleteGem_?.itemNumber} - {deleteGem_?.name}</strong>?
           </p>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setDeleteGem(undefined)} className="border-border text-muted-foreground">Cancel</Button>
-            <Button disabled={deleting} onClick={async () => {
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button onClick={() => setDeleteGem(undefined)}
+              style={{ padding: "0.5rem 1.1rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button disabled={deleting} onClick={async () => {
               if (!deleteGem_) return;
               setDeleting(true);
               try {
@@ -583,10 +643,10 @@ export default function GemsPage() {
                 load();
                 setDeleteGem(undefined);
               } finally { setDeleting(false); }
-            }} className="bg-crimson/10 border border-crimson/40 text-crimson hover:bg-crimson/20">
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+            }} style={{ padding: "0.5rem 1.1rem", borderRadius: "0.75rem", border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: deleting ? 0.7 : 1 }}>
+              {deleting ? <Loader2 style={{ width: "1rem", height: "1rem" }} className="animate-spin" /> : <Trash2 style={{ width: "1rem", height: "1rem" }} />}
               Delete
-            </Button>
+            </button>
           </div>
         </DialogContent>
       </Dialog>

@@ -1,34 +1,24 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Users, Package, Shirt, ArrowRight, Plus, Library, Sparkles, Gem, CalendarDays, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { getRegistrations } from "@/lib/services/registrations";
+import { getParentShirts, seedParentShirts } from "@/lib/services/parent-shirts";
+import { type CostumeType, CostumeTypeLabels } from "@/types";
 
-const REGISTRATIONS_BY_TYPE = [
-  { label: "Girls Backline",        count: 3,  color: "#FF006E" },
-  { label: "Boys Backline",         count: 4,  color: "#1A73E8" },
-  { label: "Toddler Frontline",     count: 1,  color: "#FFD60A" },
-  { label: "Girls Frontline",       count: 0,  color: "#FF6B35" },
-  { label: "Boys Frontline",        count: 0,  color: "#00BCD4" },
-  { label: "Girls Ultra Frontline", count: 1,  color: "#673AB7" },
-  { label: "Boys Ultra Frontline",  count: 3,  color: "#4CAF50" },
+const COSTUME_ORDER: CostumeType[] = [
+  "girls_backline", "boys_backline", "toddler_frontline",
+  "girls_frontline", "boys_frontline", "girls_ultra_frontline", "boys_ultra_frontline",
 ];
-
-const TOTAL = REGISTRATIONS_BY_TYPE.reduce((s, x) => s + x.count, 0);
-
-const PARENT_SHIRTS = [
-  { name: "Cheryl",      style: "Ghana Jersey",   size: "L" },
-  { name: "Aunty Angie", style: "Yellow T-Shirt", size: "M" },
-];
-
-const STAT_CARDS = [
-  { title: "Registrations", value: TOTAL,  href: "/registrations", icon: Users,    bg: "#FF006E", light: "rgba(255,0,110,0.1)" },
-  { title: "Shirt Orders",  value: 2,      href: "/parent-shirts", icon: Shirt,    bg: "#00BCD4", light: "rgba(0,188,212,0.1)" },
-  { title: "Costume Pieces",value: 14,     href: "/pieces",        icon: Library,  bg: "#FFD60A", light: "rgba(255,214,10,0.12)" },
-  { title: "Appliques",     value: "—",    href: "/appliques",     icon: Sparkles, bg: "#673AB7", light: "rgba(103,58,183,0.1)" },
-];
+const TYPE_COLORS: Record<CostumeType, string> = {
+  girls_backline: "#FF006E", boys_backline: "#1A73E8", toddler_frontline: "#FFD60A",
+  girls_frontline: "#FF6B35", boys_frontline: "#00BCD4",
+  girls_ultra_frontline: "#673AB7", boys_ultra_frontline: "#4CAF50",
+};
 
 const QUICK_LINKS = [
   { label: "2026 Season",   href: "/seasons",   icon: CalendarDays, color: "#FF006E" },
@@ -40,6 +30,30 @@ const QUICK_LINKS = [
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [registrations, setRegistrations] = useState<Awaited<ReturnType<typeof getRegistrations>>>([]);
+  const [shirtOrders, setShirtOrders] = useState<Awaited<ReturnType<typeof getParentShirts>>>([]);
+
+  useEffect(() => {
+    getRegistrations("2026").then(setRegistrations).catch(console.error);
+    seedParentShirts()
+      .then(() => getParentShirts("2026"))
+      .then(setShirtOrders)
+      .catch(console.error);
+  }, []);
+
+  const total = registrations.length;
+  const regsByType = COSTUME_ORDER.map(type => ({
+    label: CostumeTypeLabels[type],
+    count: registrations.filter(r => r.costumeType === type).length,
+    color: TYPE_COLORS[type],
+  }));
+
+  const STAT_CARDS = [
+    { title: "Registrations", value: total, href: "/registrations", icon: Users,    bg: "#FF006E", light: "rgba(255,0,110,0.1)" },
+    { title: "Shirt Orders",  value: shirtOrders.reduce((s, o) => s + o.quantity, 0), href: "/parent-shirts", icon: Shirt, bg: "#00BCD4", light: "rgba(0,188,212,0.1)" },
+    { title: "Costume Pieces",value: "—",   href: "/pieces",        icon: Library,  bg: "#FFD60A", light: "rgba(255,214,10,0.12)" },
+    { title: "Appliques",     value: "—",   href: "/appliques",     icon: Sparkles, bg: "#673AB7", light: "rgba(103,58,183,0.1)" },
+  ];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -106,7 +120,7 @@ export default function DashboardPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
             <div>
               <h2 style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: 0 }}>Registrations by Type</h2>
-              <p style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1E2029", margin: "0.2rem 0 0" }}>{TOTAL} <span style={{ fontSize: "1rem", color: "#9CA3AF", fontWeight: 500 }}>masqueraders</span></p>
+              <p style={{ fontSize: "1.5rem", fontWeight: 800, color: "#1E2029", margin: "0.2rem 0 0" }}>{total} <span style={{ fontSize: "1rem", color: "#9CA3AF", fontWeight: 500 }}>masqueraders</span></p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "rgba(26,115,232,0.08)", padding: "0.4rem 0.75rem", borderRadius: "999px" }}>
               <TrendingUp style={{ width: "0.9rem", height: "0.9rem", color: "#1A73E8" }} />
@@ -114,14 +128,14 @@ export default function DashboardPage() {
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            {REGISTRATIONS_BY_TYPE.map(item => (
+            {regsByType.map(item => (
               <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                 <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: item.color, flexShrink: 0 }} />
                 <span style={{ fontSize: "0.85rem", color: "#374151", width: "11rem", flexShrink: 0 }}>{item.label}</span>
                 <div style={{ flex: 1, height: "8px", borderRadius: "4px", background: "#F3F4F6", overflow: "hidden" }}>
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: TOTAL > 0 ? `${(item.count / TOTAL) * 100}%` : "0%" }}
+                    animate={{ width: total > 0 ? `${(item.count / total) * 100}%` : "0%" }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                     style={{ height: "100%", borderRadius: "4px", background: item.color }}
                   />
@@ -139,27 +153,20 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* Parent shirts */}
+        {/* Parent shirts — link through to dedicated page */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
+          style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.07)", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
             <h2 style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: 0 }}>Parent Shirt Orders</h2>
             <div style={{ width: "2rem", height: "2rem", borderRadius: "0.5rem", background: "rgba(0,188,212,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Shirt style={{ width: "1rem", height: "1rem", color: "#00BCD4" }} />
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {PARENT_SHIRTS.map(s => (
-              <div key={s.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem", borderRadius: "0.75rem", background: "#F9FAFB" }}>
-                <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1E2029" }}>{s.name}</span>
-                <div style={{ display: "flex", gap: "0.4rem" }}>
-                  <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", borderRadius: "999px", background: "rgba(0,188,212,0.1)", color: "#007C91", fontWeight: 600 }}>{s.style}</span>
-                  <span style={{ fontSize: "0.7rem", padding: "0.2rem 0.5rem", borderRadius: "999px", background: "rgba(255,214,10,0.15)", color: "#8A6500", fontWeight: 600 }}>{s.size}</span>
-                </div>
-              </div>
-            ))}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "1.5rem 0", gap: "0.5rem" }}>
+            <p style={{ fontSize: "2rem", fontWeight: 800, color: "#1E2029", lineHeight: 1 }}>{shirtOrders.reduce((s, o) => s + o.quantity, 0)}</p>
+            <p style={{ fontSize: "0.875rem", color: "#9CA3AF", textAlign: "center" }}>shirts ordered for 2026</p>
           </div>
-          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #F3F4F6" }}>
+          <div style={{ paddingTop: "1rem", borderTop: "1px solid #F3F4F6" }}>
             <Link href="/parent-shirts">
               <Button variant="ghost" style={{ width: "100%", color: "#00BCD4", fontWeight: 600, fontSize: "0.875rem" }}>
                 Manage Orders <ArrowRight style={{ width: "1rem", height: "1rem", marginLeft: "0.5rem" }} />

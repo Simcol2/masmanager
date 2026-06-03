@@ -1,448 +1,354 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Search,
-  Plus,
-  Filter,
-  Download,
-  MoreHorizontal,
-  User,
-  Phone,
-  Mail,
-  CreditCard,
+  Search, Plus, Filter, Download, User,
+  CreditCard, Loader2, Check, Pencil, Trash2, AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { CostumeTypeLabels, PaymentStatus, type Registration } from "@/types";
+import { formatCurrency } from "@/lib/utils";
+import { CostumeTypeLabels, type PaymentStatus, type Registration, type CostumeType } from "@/types";
+import {
+  getRegistrations, createRegistration, updateRegistration,
+  deleteRegistration, seedRegistrations,
+} from "@/lib/services/registrations";
 
-// Real registrations from Main Black Star Tracker.xlsx - Registrations sheet
-const mockRegistrations: Registration[] = [
-  {
-    id: "1",
-    seasonId: "2026",
-    firstName: "Zayne",
-    lastName: "Walsh",
-    age: 2.5,
-    gender: "boy",
-    costumeType: "boys_backline",
-    style: "White Tank",
-    topSize: "4T",
-    bottomSize: "4T",
-    bandSize: "Small",
-    waist: '22"',
-    shoeSize: "8",
-    shoeCategory: "Toddler",
-    addOns: "None",
-    parentName: "Kim Walsh",
-    parentPhone: "416-555-0101",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "2",
-    seasonId: "2026",
-    firstName: "Caleeb",
-    lastName: "Smith",
-    age: 7,
-    gender: "boy",
-    costumeType: "boys_backline",
-    style: "White T-Shirt",
-    topSize: "L (10-12)",
-    bottomSize: "M (8-9)",
-    bandSize: "Large",
-    waist: '1"',
-    shoeSize: "N/A",
-    parentName: "Chelsea Alphonso",
-    parentPhone: "416-555-0102",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "3",
-    seasonId: "2026",
-    firstName: "Ciara",
-    lastName: "Walsh",
-    age: 4,
-    gender: "girl",
-    costumeType: "girls_backline",
-    style: "White Shorts",
-    topSize: "S (6-7)",
-    bottomSize: "S (6-7)",
-    bandSize: "Small",
-    girlsTopSize: "Small",
-    waist: '21"',
-    shoeSize: "12Y",
-    shoeCategory: "Little Kid",
-    addOns: "None",
-    parentName: "Kali Walsh",
-    parentPhone: "416-555-0103",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "4",
-    seasonId: "2026",
-    firstName: "Emelia",
-    lastName: "Fajardo",
-    age: 7,
-    gender: "girl",
-    costumeType: "girls_backline",
-    style: "White Shorts",
-    topSize: "S (6-7)",
-    bottomSize: "S (6-7)",
-    bandSize: "Small",
-    girlsTopSize: "Small",
-    shoeSize: "N/A",
-    addOns: "None",
-    parentName: "Leeann Samuel",
-    parentPhone: "416-555-0104",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "5",
-    seasonId: "2026",
-    firstName: "Tristin",
-    lastName: "Phillip",
-    age: 7,
-    gender: "boy",
-    costumeType: "boys_backline",
-    style: "White Tank",
-    topSize: "M (8-9)",
-    bottomSize: "M (8-9)",
-    bandSize: "Small",
-    waist: '25.5"',
-    shoeSize: "N/A",
-    addOns: "None",
-    parentName: "Crystal Samuel",
-    parentPhone: "416-555-0105",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "6",
-    seasonId: "2026",
-    firstName: "Quintin",
-    lastName: "Phillip",
-    age: 6,
-    gender: "boy",
-    costumeType: "boys_backline",
-    style: "White Tank",
-    topSize: "S (6-7)",
-    bottomSize: "S (6-7)",
-    bandSize: "Small",
-    waist: '23"',
-    shoeSize: "N/A",
-    addOns: "None",
-    parentName: "Crystal Samuel",
-    parentPhone: "416-555-0105",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "Sibling of Tristin",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "7",
-    seasonId: "2026",
-    firstName: "Olivia Jade",
-    lastName: "Laidlaw",
-    age: 2,
-    gender: "girl",
-    costumeType: "girls_backline",
-    style: "White Shorts",
-    topSize: "2T",
-    bottomSize: "2T",
-    bandSize: "Small",
-    girlsTopSize: "Small",
-    shoeSize: "N/A",
-    addOns: "None",
-    parentName: "Larissa Estrella",
-    parentPhone: "416-555-0106",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "8",
-    seasonId: "2026",
-    firstName: "Kaylaha",
-    lastName: "",
-    age: 4,
-    gender: "girl",
-    costumeType: "toddler_frontline",
-    style: "White Shorts",
-    topSize: "4T",
-    bottomSize: "4T",
-    bandSize: "Small",
-    girlsTopSize: "Small",
-    shoeSize: "12",
-    shoeCategory: "Little Kid",
-    addOns: "None",
-    parentName: "Deon Dabideen",
-    parentPhone: "416-555-0107",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 300,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "9",
-    seasonId: "2026",
-    firstName: "Ava",
-    lastName: "",
-    age: 0,
-    gender: "girl",
-    costumeType: "girls_ultra_frontline",
-    style: "Green Shorts",
-    topSize: "Adult Small",
-    bottomSize: "Adult Small",
-    bandSize: "Large",
-    girlsTopSize: "Extra Large",
-    shoeSize: "8",
-    shoeCategory: "Adult",
-    addOns: "None",
-    parentName: "Camille",
-    parentPhone: "416-555-0108",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 450,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "10",
-    seasonId: "2026",
-    firstName: "Mateo",
-    lastName: "",
-    age: 0,
-    gender: "boy",
-    costumeType: "boys_ultra_frontline",
-    style: "White Tank",
-    topSize: "Adult Small",
-    bottomSize: "Adult Small",
-    bandSize: "Large",
-    shoeSize: "9",
-    shoeCategory: "Adult",
-    addOns: "None",
-    parentName: "Camille",
-    parentPhone: "416-555-0108",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 450,
-    balanceOwing: 0,
-    notes: "Sibling of Ava",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "11",
-    seasonId: "2026",
-    firstName: "Max",
-    lastName: "",
-    age: 0,
-    gender: "boy",
-    costumeType: "boys_ultra_frontline",
-    style: "White Tank",
-    topSize: "Adult Small",
-    bottomSize: "Adult Small",
-    bandSize: "Large",
-    shoeSize: "5",
-    shoeCategory: "Adult",
-    addOns: "None",
-    parentName: "Tamara",
-    parentPhone: "416-555-0109",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 450,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-  {
-    id: "12",
-    seasonId: "2026",
-    firstName: "Parker",
-    lastName: "",
-    age: 0,
-    gender: "boy",
-    costumeType: "boys_ultra_frontline",
-    style: "White Tank",
-    topSize: "Adult Small",
-    bottomSize: "Adult Small",
-    bandSize: "Large",
-    addOns: "None",
-    parentName: "Cindy",
-    parentPhone: "416-555-0110",
-    registrationDate: new Date("2026-01-15"),
-    paymentStatus: "paid",
-    amountPaid: 450,
-    balanceOwing: 0,
-    notes: "",
-    createdAt: new Date("2026-01-15"),
-    updatedAt: new Date("2026-01-15"),
-  },
-];
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-export default function RegistrationsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [costumeFilter, setCostumeFilter] = useState<string>("all");
-  const [paymentFilter, setPaymentFilter] = useState<string>("all");
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.875rem",
+  border: "1.5px solid #E5E7EB", borderRadius: "0.625rem",
+  background: "#FFFFFF", color: "#1E2029", outline: "none",
+};
 
-  const filtered = mockRegistrations.filter((reg) => {
-    const matchesSearch =
-      `${reg.firstName} ${reg.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      reg.parentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (reg.parentPhone?.includes(searchQuery) ?? false);
-    
-    const matchesCostume = costumeFilter === "all" || reg.costumeType === costumeFilter;
-    const matchesPayment = paymentFilter === "all" || reg.paymentStatus === paymentFilter;
-    
-    return matchesSearch && matchesCostume && matchesPayment;
-  });
+function PaymentBadge({ status }: { status: PaymentStatus }) {
+  if (status === "paid") return (
+    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#DCFCE7", color: "#166534", border: "1px solid #BBF7D040" }}>Paid</span>
+  );
+  if (status === "partial") return (
+    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#FEF9C3", color: "#854D0E", border: "1px solid #FDE04740" }}>Partial</span>
+  );
+  return (
+    <span style={{ fontSize: "0.72rem", fontWeight: 700, padding: "0.2rem 0.6rem", borderRadius: "999px", background: "#FEE2E2", color: "#991B1B", border: "1px solid #FECACA40" }}>Unpaid</span>
+  );
+}
 
-  const getPaymentBadge = (status: PaymentStatus) => {
-    switch (status) {
-      case "paid":
-        return <Badge className="badge-emerald">Paid</Badge>;
-      case "partial":
-        return <Badge className="badge-gold">Partial</Badge>;
-      case "unpaid":
-        return <Badge className="badge-crimson">Unpaid</Badge>;
+// ── Registration form ─────────────────────────────────────────────────────────
+
+const EMPTY_FORM = {
+  firstName: "", lastName: "", age: "", gender: "" as "" | "boy" | "girl",
+  costumeType: "" as "" | CostumeType,
+  style: "", topSize: "", bottomSize: "", bandSize: "",
+  girlsTopSize: "", waist: "", shoeSize: "", shoeCategory: "", addOns: "",
+  parentName: "", parentEmail: "", parentPhone: "",
+  amountPaid: "0", totalCost: "0",
+  paymentStatus: "unpaid" as PaymentStatus,
+  notes: "",
+};
+
+function RegistrationForm({
+  initial, onClose, onSaved,
+}: {
+  initial?: Registration;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState(() =>
+    initial
+      ? {
+          firstName: initial.firstName,
+          lastName: initial.lastName,
+          age: String(initial.age ?? ""),
+          gender: initial.gender,
+          costumeType: initial.costumeType,
+          style: initial.style ?? "",
+          topSize: initial.topSize ?? "",
+          bottomSize: initial.bottomSize ?? "",
+          bandSize: initial.bandSize ?? "",
+          girlsTopSize: initial.girlsTopSize ?? "",
+          waist: initial.waist ?? "",
+          shoeSize: initial.shoeSize ?? "",
+          shoeCategory: initial.shoeCategory ?? "",
+          addOns: initial.addOns ?? "",
+          parentName: initial.parentName,
+          parentEmail: initial.parentEmail ?? "",
+          parentPhone: initial.parentPhone ?? "",
+          amountPaid: String(initial.amountPaid ?? 0),
+          totalCost: String((initial.amountPaid ?? 0) + (initial.balanceOwing ?? 0)),
+          paymentStatus: initial.paymentStatus,
+          notes: initial.notes ?? "",
+        }
+      : EMPTY_FORM
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const set = <K extends keyof typeof form>(k: K) => (v: (typeof form)[K]) =>
+    setForm(f => ({ ...f, [k]: v }));
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.firstName.trim() || !form.parentName.trim() || !form.costumeType || !form.gender) {
+      setError("First name, parent name, costume type, and gender are required");
+      return;
     }
-  };
+    setSaving(true);
+    setError("");
+    try {
+      const paid = parseFloat(form.amountPaid) || 0;
+      const total = parseFloat(form.totalCost) || 0;
+      const payload = {
+        seasonId: "2026",
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        age: parseFloat(form.age) || 0,
+        gender: form.gender as "boy" | "girl",
+        costumeType: form.costumeType as CostumeType,
+        style: form.style || undefined,
+        topSize: form.topSize || undefined,
+        bottomSize: form.bottomSize || undefined,
+        bandSize: form.bandSize || undefined,
+        girlsTopSize: form.girlsTopSize || undefined,
+        waist: form.waist || undefined,
+        shoeSize: form.shoeSize || undefined,
+        shoeCategory: form.shoeCategory || undefined,
+        addOns: form.addOns || undefined,
+        parentName: form.parentName.trim(),
+        parentEmail: form.parentEmail || undefined,
+        parentPhone: form.parentPhone || undefined,
+        registrationDate: initial?.registrationDate ?? new Date(),
+        paymentStatus: form.paymentStatus,
+        amountPaid: paid,
+        balanceOwing: Math.max(0, total - paid),
+        notes: form.notes || undefined,
+      };
+      if (isEdit && initial) {
+        await updateRegistration(initial.id, payload);
+      } else {
+        await createRegistration(payload);
+      }
+      onSaved();
+      onClose();
+    } catch { setError("Failed to save. Check your connection and try again."); }
+    finally { setSaving(false); }
+  }
+
+  const field = (label: string, el: React.ReactNode) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+      <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#374151" }}>{label}</label>
+      {el}
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
+    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+      {/* Participant */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        {field("First Name *", <input style={inputStyle} value={form.firstName} onChange={e => set("firstName")(e.target.value)} placeholder="First name" />)}
+        {field("Last Name", <input style={inputStyle} value={form.lastName} onChange={e => set("lastName")(e.target.value)} placeholder="Last name" />)}
+        {field("Age", <input type="number" min="0" step="0.5" style={inputStyle} value={form.age} onChange={e => set("age")(e.target.value)} placeholder="e.g. 7" />)}
+        {field("Gender *",
+          <select style={inputStyle} value={form.gender} onChange={e => set("gender")(e.target.value as "boy" | "girl" | "")}>
+            <option value="">— Select —</option>
+            <option value="boy">Boy</option>
+            <option value="girl">Girl</option>
+          </select>
+        )}
+      </div>
+
+      {/* Costume */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+        {field("Costume Type *",
+          <select style={inputStyle} value={form.costumeType} onChange={e => set("costumeType")(e.target.value as CostumeType | "")}>
+            <option value="">— Select —</option>
+            {Object.entries(CostumeTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        )}
+        {field("Style", <input style={inputStyle} value={form.style} onChange={e => set("style")(e.target.value)} placeholder="e.g. White Tank" />)}
+      </div>
+
+      {/* Sizing */}
+      <div>
+        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Sizing</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+          {field("Top Size",      <input style={inputStyle} value={form.topSize}      onChange={e => set("topSize")(e.target.value)}      placeholder="e.g. 4T" />)}
+          {field("Bottom Size",   <input style={inputStyle} value={form.bottomSize}   onChange={e => set("bottomSize")(e.target.value)}   placeholder="e.g. 4T" />)}
+          {field("Band Size",     <input style={inputStyle} value={form.bandSize}     onChange={e => set("bandSize")(e.target.value)}     placeholder="Small / Large" />)}
+          {field("Girls Top",     <input style={inputStyle} value={form.girlsTopSize} onChange={e => set("girlsTopSize")(e.target.value)} placeholder="Small / XL" />)}
+          {field("Waist",         <input style={inputStyle} value={form.waist}        onChange={e => set("waist")(e.target.value)}        placeholder='e.g. 22"' />)}
+          {field("Shoe Size",     <input style={inputStyle} value={form.shoeSize}     onChange={e => set("shoeSize")(e.target.value)}     placeholder="e.g. 8" />)}
+        </div>
+        <div style={{ marginTop: "0.6rem" }}>
+          {field("Shoe Category", <input style={inputStyle} value={form.shoeCategory} onChange={e => set("shoeCategory")(e.target.value)} placeholder="e.g. Toddler, Adult, Little Kid" />)}
+        </div>
+      </div>
+
+      {/* Add-ons */}
+      {field("Add-ons", <input style={inputStyle} value={form.addOns} onChange={e => set("addOns")(e.target.value)} placeholder="e.g. Extra necklace, Crown upgrade" />)}
+
+      {/* Parent */}
+      <div>
+        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Parent / Guardian</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
+          {field("Name *",  <input style={inputStyle} value={form.parentName}  onChange={e => set("parentName")(e.target.value)}  placeholder="Parent name" />)}
+          {field("Phone",   <input style={inputStyle} value={form.parentPhone} onChange={e => set("parentPhone")(e.target.value)} placeholder="e.g. 868-555-0100" />)}
+          <div style={{ gridColumn: "1 / -1" }}>
+            {field("Email", <input type="email" style={inputStyle} value={form.parentEmail} onChange={e => set("parentEmail")(e.target.value)} placeholder="email@example.com" />)}
+          </div>
+        </div>
+      </div>
+
+      {/* Payment */}
+      <div>
+        <p style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", marginBottom: "0.5rem" }}>Payment</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+          {field("Amount Paid ($)", <input type="number" min="0" step="0.01" style={inputStyle} value={form.amountPaid} onChange={e => set("amountPaid")(e.target.value)} />)}
+          {field("Total Cost ($)",  <input type="number" min="0" step="0.01" style={inputStyle} value={form.totalCost}  onChange={e => set("totalCost")(e.target.value)} />)}
+          {field("Status",
+            <select style={inputStyle} value={form.paymentStatus} onChange={e => set("paymentStatus")(e.target.value as PaymentStatus)}>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          )}
+        </div>
+      </div>
+
+      {/* Notes */}
+      {field("Notes", <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }} value={form.notes} onChange={e => set("notes")(e.target.value)} placeholder="e.g. Sibling of ..." />)}
+
+      {error && <p style={{ fontSize: "0.85rem", color: "#DC2626" }}>{error}</p>}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", paddingTop: "0.5rem", borderTop: "1px solid #F3F4F6" }}>
+        <button type="button" onClick={onClose}
+          style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+          Cancel
+        </button>
+        <button type="submit" disabled={saving}
+          style={{ padding: "0.55rem 1.5rem", borderRadius: "0.75rem", border: "none", background: "#1A73E8", color: "#FFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: saving ? 0.7 : 1 }}>
+          {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />}
+          {isEdit ? "Save Changes" : "Add Registration"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+
+export default function RegistrationsPage() {
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [costumeFilter, setCostumeFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [addOpen, setAddOpen] = useState(false);
+  const [editReg, setEditReg] = useState<Registration | undefined>();
+  const [deleteReg, setDeleteReg] = useState<Registration | undefined>();
+  const [deleting, setDeleting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      await seedRegistrations();
+      setRegistrations(await getRegistrations("2026"));
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "Failed to load registrations");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = registrations.filter(reg => {
+    const q = searchQuery.toLowerCase();
+    const matchSearch =
+      `${reg.firstName} ${reg.lastName}`.toLowerCase().includes(q) ||
+      reg.parentName.toLowerCase().includes(q) ||
+      (reg.parentPhone?.includes(q) ?? false);
+    const matchCostume  = costumeFilter  === "all" || reg.costumeType    === costumeFilter;
+    const matchPayment  = paymentFilter  === "all" || reg.paymentStatus  === paymentFilter;
+    return matchSearch && matchCostume && matchPayment;
+  });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="page-header"
-      >
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+        style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
         <div>
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground">
-            Registrations
-          </h1>
-          <p className="text-void-400 mt-1">
-            {mockRegistrations.length} participants registered for 2026
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#1E2029", margin: 0 }} className="font-display">Registrations</h1>
+          <p style={{ color: "#6B7280", marginTop: "0.2rem", fontSize: "0.9rem" }}>
+            {loading ? "Loading…" : `${registrations.length} participants registered for 2026`}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="border-void-700 text-void-300 hover:bg-void-800">
-            <Download className="w-4 h-4 mr-2" />
-            Export
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button variant="outline" style={{ borderColor: "#E5E7EB", color: "#6B7280" }}>
+            <Download style={{ width: "1rem", height: "1rem", marginRight: "0.4rem" }} /> Export
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button className="gold-btn">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Registration
+              <Button style={{ background: "#1A73E8", color: "#fff", border: "none", fontWeight: 600, borderRadius: "0.75rem" }}>
+                <Plus style={{ width: "1rem", height: "1rem", marginRight: "0.4rem" }} /> Add Registration
               </Button>
             </DialogTrigger>
-            <DialogContent className="glass-card border-void-800/50 max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-display text-xl gold-text">
-                  New Registration
-                </DialogTitle>
-              </DialogHeader>
-              <RegistrationForm onClose={() => setIsAddDialogOpen(false)} />
+            <DialogContent style={{
+              position: "fixed", top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)", zIndex: 51,
+              width: "calc(100% - 2rem)", maxWidth: "42rem", maxHeight: "90vh",
+              overflow: "hidden", background: "#FFF", border: "1px solid #E5E7EB",
+              borderRadius: "1rem", padding: 0, boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+              outline: "none", display: "flex", flexDirection: "column",
+            }}>
+              <div style={{ padding: "1.25rem 3.5rem 1rem 1.5rem", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
+                <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>New Registration</h2>
+                <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: 0 }}>2026 Season — The Black Stars</p>
+              </div>
+              <div style={{ overflowY: "auto", flex: 1, padding: "1.25rem 1.5rem" }}>
+                <RegistrationForm onClose={() => setAddOpen(false)} onSaved={load} />
+              </div>
             </DialogContent>
           </Dialog>
         </div>
       </motion.div>
 
       {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex flex-col sm:flex-row gap-3"
-      >
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-void-500" />
-          <Input
-            placeholder="Search by name, parent, or phone..."
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+        style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: "14rem" }}>
+          <Search style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", width: "1rem", height: "1rem", color: "#9CA3AF" }} />
+          <input
+            placeholder="Search by name, parent, or phone…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="luxury-input pl-10"
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ ...inputStyle, paddingLeft: "2.25rem" }}
           />
         </div>
         <Select value={costumeFilter} onValueChange={setCostumeFilter}>
-          <SelectTrigger className="luxury-input w-full sm:w-[200px]">
-            <Filter className="w-4 h-4 mr-2 text-void-500" />
+          <SelectTrigger style={{ width: "13rem", border: "1.5px solid #E5E7EB", borderRadius: "0.625rem", background: "#FFFFFF", color: "#1E2029", fontSize: "0.875rem" }}>
+            <Filter style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#9CA3AF" }} />
             <SelectValue placeholder="Costume Type" />
           </SelectTrigger>
-          <SelectContent className="bg-void-900 border-void-700">
+          <SelectContent>
             <SelectItem value="all">All Costumes</SelectItem>
-            {Object.entries(CostumeTypeLabels).map(([key, label]) => (
-              <SelectItem key={key} value={key}>{label}</SelectItem>
-            ))}
+            {Object.entries(CostumeTypeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={paymentFilter} onValueChange={setPaymentFilter}>
-          <SelectTrigger className="luxury-input w-full sm:w-[180px]">
-            <CreditCard className="w-4 h-4 mr-2 text-void-500" />
+          <SelectTrigger style={{ width: "11rem", border: "1.5px solid #E5E7EB", borderRadius: "0.625rem", background: "#FFFFFF", color: "#1E2029", fontSize: "0.875rem" }}>
+            <CreditCard style={{ width: "1rem", height: "1rem", marginRight: "0.5rem", color: "#9CA3AF" }} />
             <SelectValue placeholder="Payment" />
           </SelectTrigger>
-          <SelectContent className="bg-void-900 border-void-700">
+          <SelectContent>
             <SelectItem value="all">All Payments</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
             <SelectItem value="partial">Partial</SelectItem>
@@ -451,285 +357,217 @@ export default function RegistrationsPage() {
         </Select>
       </motion.div>
 
-      {/* Desktop Table */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-        className="hidden md:block"
-      >
-        <Card className="glass-card overflow-hidden">
+      {/* Loading state */}
+      {loading && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "4rem", gap: "0.75rem", color: "#9CA3AF" }}>
+          <Loader2 style={{ width: "1.5rem", height: "1.5rem" }} className="animate-spin" />
+          <span>Loading registrations…</span>
+        </div>
+      )}
+
+      {/* Error state */}
+      {!loading && loadError && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem", gap: "0.75rem", textAlign: "center" }}>
+          <AlertCircle style={{ width: "2rem", height: "2rem", color: "#DC2626" }} />
+          <p style={{ fontWeight: 600, color: "#DC2626" }}>Could not load registrations</p>
+          <p style={{ fontSize: "0.875rem", color: "#6B7280", maxWidth: "28rem" }}>{loadError}</p>
+          <button onClick={load} style={{ marginTop: "0.5rem", padding: "0.5rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 600, cursor: "pointer" }}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Table */}
+      {!loading && !loadError && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}
+          style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
           <div className="overflow-x-auto">
-            <table className="luxury-table w-full">
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr>
-                  <th>Participant</th>
-                  <th>Costume</th>
-                  <th>Parent</th>
-                  <th>Size</th>
-                  <th>Payment</th>
-                  <th>Balance</th>
-                  <th className="w-10"></th>
+                <tr style={{ borderBottom: "1px solid #F3F4F6" }}>
+                  {["Participant", "Costume", "Parent", "Size", "Payment", "Balance", ""].map((h, idx) => (
+                    <th key={idx} style={{ padding: "0.6rem 1rem", textAlign: "left", fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#9CA3AF", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((reg, index) => (
-                  <motion.tr
-                    key={reg.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.03 }}
-                    className="group cursor-pointer"
-                  >
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gold-500/10 flex items-center justify-center border border-gold-500/20">
-                          <User className="w-4 h-4 text-gold-400" />
+                {filtered.map((reg, i) => (
+                  <motion.tr key={reg.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    style={{ borderBottom: i < filtered.length - 1 ? "1px solid #F9FAFB" : "none" }}
+                    className="group">
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div style={{ width: "2rem", height: "2rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", border: "1px solid rgba(26,115,232,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <User style={{ width: "1rem", height: "1rem", color: "#1A73E8" }} />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">
-                            {reg.firstName} {reg.lastName}
-                          </p>
-                          <p className="text-xs text-void-500">
-                            {reg.gender === "boy" ? "Boy" : "Girl"}, {reg.age} years
-                          </p>
+                          <p style={{ fontWeight: 600, color: "#1E2029", margin: 0, fontSize: "0.875rem" }}>{reg.firstName} {reg.lastName}</p>
+                          <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.gender === "boy" ? "Boy" : "Girl"}{reg.age ? `, ${reg.age}y` : ""}</p>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      <span className="text-sm text-void-300">
-                        {CostumeTypeLabels[reg.costumeType]}
-                      </span>
-                      <p className="text-xs text-void-500">{reg.style}</p>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{CostumeTypeLabels[reg.costumeType]}</p>
+                      {reg.style && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.style}</p>}
                     </td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-void-300">{reg.parentName}</span>
-                      </div>
-                      <p className="text-xs text-void-500">{reg.parentPhone}</p>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{reg.parentName}</p>
+                      {reg.parentPhone && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.parentPhone}</p>}
                     </td>
-                    <td>
-                      <span className="text-sm text-void-300">{reg.topSize}</span>
-                      <p className="text-xs text-void-500">{reg.bandSize}</p>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <p style={{ fontSize: "0.875rem", color: "#374151", margin: 0 }}>{reg.topSize || "—"}</p>
+                      {reg.bandSize && <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.bandSize}</p>}
                     </td>
-                    <td>{getPaymentBadge(reg.paymentStatus)}</td>
-                    <td>
-                      <span className={cn("text-sm font-medium", reg.balanceOwing > 0 ? "text-crimson" : "text-emerald")}>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <PaymentBadge status={reg.paymentStatus} />
+                    </td>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A" }}>
                         {formatCurrency(reg.balanceOwing)}
                       </span>
                     </td>
-                    <td>
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-void-500 hover:text-gold-400">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
+                    <td style={{ padding: "0.875rem 1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", opacity: 0 }} className="group-hover:opacity-100" >
+                        <button onClick={() => setEditReg(reg)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.25rem", borderRadius: "0.4rem" }}
+                          onMouseEnter={e => (e.currentTarget.style.color = "#1A73E8")}
+                          onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>
+                          <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+                        </button>
+                        <button onClick={() => setDeleteReg(reg)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.25rem", borderRadius: "0.4rem" }}
+                          onMouseEnter={e => (e.currentTarget.style.color = "#DC2626")}
+                          onMouseLeave={e => (e.currentTarget.style.color = "#9CA3AF")}>
+                          <Trash2 style={{ width: "0.85rem", height: "0.85rem" }} />
+                        </button>
+                      </div>
                     </td>
                   </motion.tr>
                 ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} style={{ textAlign: "center", padding: "3rem", color: "#9CA3AF" }}>No registrations match your filters</td></tr>
+                )}
               </tbody>
             </table>
           </div>
-        </Card>
-      </motion.div>
+        </motion.div>
+      )}
 
-      {/* Mobile Cards */}
-      <div className="md:hidden space-y-3">
-        {filtered.map((reg, index) => (
-          <motion.div
-            key={reg.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className="glass-card p-4 rounded-lg border border-void-800/50"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gold-500/10 flex items-center justify-center border border-gold-500/20">
-                  <User className="w-5 h-5 text-gold-400" />
+      {/* Mobile cards */}
+      {!loading && !loadError && (
+        <>
+          <style>{`.reg-mobile{display:none}@media(max-width:767px){.reg-desktop{display:none}.reg-mobile{display:flex;flex-direction:column;gap:0.75rem}}`}</style>
+          <div className="reg-mobile">
+            {filtered.map((reg, i) => (
+              <motion.div key={reg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <div style={{ width: "2.5rem", height: "2.5rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", border: "1px solid rgba(26,115,232,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <User style={{ width: "1.25rem", height: "1.25rem", color: "#1A73E8" }} />
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, color: "#1E2029", margin: 0 }}>{reg.firstName} {reg.lastName}</p>
+                      <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: 0 }}>{reg.gender === "boy" ? "Boy" : "Girl"}{reg.age ? `, ${reg.age}y` : ""}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <PaymentBadge status={reg.paymentStatus} />
+                    <button onClick={() => setEditReg(reg)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.2rem" }}>
+                      <Pencil style={{ width: "0.85rem", height: "0.85rem" }} />
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">
-                    {reg.firstName} {reg.lastName}
-                  </p>
-                  <p className="text-xs text-void-500">
-                    {reg.gender === "boy" ? "Boy" : "Girl"}, {reg.age} years
-                  </p>
+                <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #F3F4F6", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.875rem" }}>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Costume</p><p style={{ color: "#374151", margin: 0 }}>{CostumeTypeLabels[reg.costumeType]}</p></div>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Style</p><p style={{ color: "#374151", margin: 0 }}>{reg.style || "—"}</p></div>
+                  <div><p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Parent</p><p style={{ color: "#374151", margin: 0 }}>{reg.parentName}</p></div>
+                  <div>
+                    <p style={{ color: "#9CA3AF", fontSize: "0.72rem", margin: 0 }}>Balance</p>
+                    <p style={{ fontWeight: 600, color: reg.balanceOwing > 0 ? "#DC2626" : "#16A34A", margin: 0 }}>{formatCurrency(reg.balanceOwing)}</p>
+                  </div>
                 </div>
-              </div>
-              {getPaymentBadge(reg.paymentStatus)}
-            </div>
-            
-            <div className="mt-3 pt-3 border-t border-void-800/50 grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <p className="text-void-500 text-xs">Costume</p>
-                <p className="text-void-300">{CostumeTypeLabels[reg.costumeType]}</p>
-              </div>
-              <div>
-                <p className="text-void-500 text-xs">Style</p>
-                <p className="text-void-300">{reg.style}</p>
-              </div>
-              <div>
-                <p className="text-void-500 text-xs">Parent</p>
-                <p className="text-void-300">{reg.parentName}</p>
-              </div>
-              <div>
-                <p className="text-void-500 text-xs">Balance</p>
-                <p className={cn("font-medium", reg.balanceOwing > 0 ? "text-crimson" : "text-emerald")}>
-                  {formatCurrency(reg.balanceOwing)}
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+              </motion.div>
+            ))}
+            {filtered.length === 0 && (
+              <p style={{ textAlign: "center", color: "#9CA3AF", padding: "3rem 0" }}>No registrations match your filters</p>
+            )}
+          </div>
+        </>
+      )}
 
-      {/* Summary Bar */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="flex flex-wrap gap-4 text-sm text-void-500"
-      >
-        <span>Total: <strong className="text-foreground">{filtered.length}</strong></span>
-        <span>Paid: <strong className="text-emerald">{filtered.filter(r => r.paymentStatus === "paid").length}</strong></span>
-        <span>Partial: <strong className="text-gold-400">{filtered.filter(r => r.paymentStatus === "partial").length}</strong></span>
-        <span>Unpaid: <strong className="text-crimson">{filtered.filter(r => r.paymentStatus === "unpaid").length}</strong></span>
-        <span className="ml-auto">
-          Outstanding: <strong className="text-crimson">{formatCurrency(filtered.reduce((sum, r) => sum + r.balanceOwing, 0))}</strong>
-        </span>
-      </motion.div>
+      {/* Summary bar */}
+      {!loading && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}
+          style={{ display: "flex", flexWrap: "wrap", gap: "1rem", fontSize: "0.875rem", color: "#6B7280" }}>
+          <span>Total: <strong style={{ color: "#1E2029" }}>{filtered.length}</strong></span>
+          <span>Paid: <strong style={{ color: "#16A34A" }}>{filtered.filter(r => r.paymentStatus === "paid").length}</strong></span>
+          <span>Partial: <strong style={{ color: "#D97706" }}>{filtered.filter(r => r.paymentStatus === "partial").length}</strong></span>
+          <span>Unpaid: <strong style={{ color: "#DC2626" }}>{filtered.filter(r => r.paymentStatus === "unpaid").length}</strong></span>
+          <span style={{ marginLeft: "auto" }}>
+            Outstanding: <strong style={{ color: "#DC2626" }}>{formatCurrency(filtered.reduce((s, r) => s + r.balanceOwing, 0))}</strong>
+          </span>
+        </motion.div>
+      )}
+
+      {/* Edit dialog */}
+      {editReg && (
+        <Dialog open={!!editReg} onOpenChange={v => !v && setEditReg(undefined)}>
+          <DialogContent style={{
+            position: "fixed", top: "50%", left: "50%",
+            transform: "translate(-50%, -50%)", zIndex: 51,
+            width: "calc(100% - 2rem)", maxWidth: "42rem", maxHeight: "90vh",
+            overflow: "hidden", background: "#FFF", border: "1px solid #E5E7EB",
+            borderRadius: "1rem", padding: 0, boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            outline: "none", display: "flex", flexDirection: "column",
+          }}>
+            <div style={{ padding: "1.25rem 3.5rem 1rem 1.5rem", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>
+                Edit — {editReg.firstName} {editReg.lastName}
+              </h2>
+              <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: 0 }}>Update registration details</p>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: "1.25rem 1.5rem" }}>
+              <RegistrationForm initial={editReg} onClose={() => setEditReg(undefined)} onSaved={load} />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Delete confirm */}
+      <Dialog open={!!deleteReg} onOpenChange={v => !v && setDeleteReg(undefined)}>
+        <DialogContent style={{
+          position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+          zIndex: 51, width: "calc(100% - 2rem)", maxWidth: "24rem",
+          background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem",
+          padding: "1.5rem", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", outline: "none",
+        }}>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, color: "#DC2626", margin: "0 0 0.75rem" }} className="font-display">Delete Registration</h2>
+          <p style={{ fontSize: "0.875rem", color: "#374151", marginBottom: "1.25rem" }}>
+            Permanently delete <strong>{deleteReg?.firstName} {deleteReg?.lastName}</strong>?
+          </p>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+            <button onClick={() => setDeleteReg(undefined)}
+              style={{ padding: "0.5rem 1.1rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button disabled={deleting} onClick={async () => {
+              if (!deleteReg) return;
+              setDeleting(true);
+              try {
+                await deleteRegistration(deleteReg.id);
+                setRegistrations(prev => prev.filter(r => r.id !== deleteReg.id));
+                setDeleteReg(undefined);
+              } finally { setDeleting(false); }
+            }} style={{ padding: "0.5rem 1.1rem", borderRadius: "0.75rem", border: "1px solid #FECACA", background: "#FEF2F2", color: "#DC2626", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: deleting ? 0.7 : 1 }}>
+              {deleting ? <Loader2 style={{ width: "1rem", height: "1rem" }} className="animate-spin" /> : <Trash2 style={{ width: "1rem", height: "1rem" }} />}
+              Delete
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
-
-function RegistrationForm({ onClose }: { onClose: () => void }) {
-  return (
-    <form className="space-y-6">
-      <div className="grid md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label className="text-void-300">First Name</Label>
-          <Input className="luxury-input" placeholder="Enter first name" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Last Name</Label>
-          <Input className="luxury-input" placeholder="Enter last name" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Age</Label>
-          <Input type="number" className="luxury-input" placeholder="Enter age" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Gender</Label>
-          <Select>
-            <SelectTrigger className="luxury-input">
-              <SelectValue placeholder="Select gender" />
-            </SelectTrigger>
-            <SelectContent className="bg-void-900 border-void-700">
-              <SelectItem value="boy">Boy</SelectItem>
-              <SelectItem value="girl">Girl</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Costume Type</Label>
-          <Select>
-            <SelectTrigger className="luxury-input">
-              <SelectValue placeholder="Select costume" />
-            </SelectTrigger>
-            <SelectContent className="bg-void-900 border-void-700">
-              {Object.entries(CostumeTypeLabels).map(([key, label]) => (
-                <SelectItem key={key} value={key}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Style</Label>
-          <Input className="luxury-input" placeholder="e.g. White Tank" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Top Size</Label>
-          <Input className="luxury-input" placeholder="e.g. 4T, S (6-7)" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Bottom Size</Label>
-          <Input className="luxury-input" placeholder="e.g. 4T, M (8-9)" />
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Band Size</Label>
-          <Select>
-            <SelectTrigger className="luxury-input">
-              <SelectValue placeholder="Select size" />
-            </SelectTrigger>
-            <SelectContent className="bg-void-900 border-void-700">
-              <SelectItem value="small">Small</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="large">Large</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label className="text-void-300">Shoe Size</Label>
-          <Input className="luxury-input" placeholder="e.g. 8 Toddler" />
-        </div>
-      </div>
-
-      <div className="border-t border-void-800/50 pt-4">
-        <h3 className="text-sm font-semibold text-void-300 mb-3">Parent Information</h3>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="text-void-300">Parent Name</Label>
-            <Input className="luxury-input" placeholder="Enter parent name" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-void-300">Parent Email</Label>
-            <Input type="email" className="luxury-input" placeholder="Enter email" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-void-300">Parent Phone</Label>
-            <Input className="luxury-input" placeholder="Enter phone number" />
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-void-800/50 pt-4">
-        <h3 className="text-sm font-semibold text-void-300 mb-3">Payment</h3>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label className="text-void-300">Amount Paid</Label>
-            <Input type="number" className="luxury-input" placeholder="0.00" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-void-300">Total Cost</Label>
-            <Input type="number" className="luxury-input" placeholder="300.00" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-void-300">Payment Status</Label>
-            <Select>
-              <SelectTrigger className="luxury-input">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent className="bg-void-900 border-void-700">
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose} className="border-void-700 text-void-300">
-          Cancel
-        </Button>
-        <Button type="submit" className="gold-btn">
-          Save Registration
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-function Label({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <label className={cn("text-sm font-medium", className)}>{children}</label>;
 }
