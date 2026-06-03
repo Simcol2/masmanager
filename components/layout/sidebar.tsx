@@ -36,7 +36,7 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings, color: "#6B7280", roles: ["admin"] },
 ];
 
-export function Sidebar() {
+export function Sidebar({ mobile = false }: { mobile?: boolean }) {
   const pathname = usePathname();
   const { user, logout, isAdmin } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
@@ -48,7 +48,9 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hidden lg:flex flex-col h-screen transition-all duration-300 fixed left-0 top-0 z-40",
+        mobile ? "flex" : "hidden lg:flex",
+        "flex-col h-full transition-all duration-300",
+        !mobile && "fixed left-0 top-0 z-40",
         collapsed ? "w-20" : "w-64"
       )}
       style={{ background: "#FFFFFF", borderRight: "1px solid #E5E7EB", boxShadow: "2px 0 8px rgba(0,0,0,0.06)" }}
