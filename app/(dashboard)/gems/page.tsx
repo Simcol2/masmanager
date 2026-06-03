@@ -55,6 +55,14 @@ const COLOUR_OPTIONS = [
   "Holographic", "Matte Black", "Matte White", "Multi / Mixed",
 ];
 
+// ── Shared input style ────────────────────────────────────────────────────────
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "0.5rem 0.75rem", fontSize: "0.875rem",
+  border: "1.5px solid #E5E7EB", borderRadius: "0.625rem",
+  background: "#FFFFFF", color: "#1E2029", outline: "none",
+  transition: "border-color 0.15s, box-shadow 0.15s",
+};
+
 // ── Small photo uploader ──────────────────────────────────────────────────────
 function PhotoUploader({ currentURL, uploading, uploadPct, onFileSelected, onRemove }: {
   currentURL?: string; uploading: boolean; uploadPct: number;
@@ -63,33 +71,54 @@ function PhotoUploader({ currentURL, uploading, uploadPct, onFileSelected, onRem
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div
-      className="relative w-28 h-28 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors shrink-0"
-      style={{ borderColor: currentURL ? "rgba(0,212,184,0.4)" : "rgba(220,200,210,0.7)" }}
+      style={{
+        position: "relative", width: "7rem", height: "7rem", flexShrink: 0,
+        border: `2px dashed ${currentURL ? "#1A73E8" : "#D1D5DB"}`,
+        borderRadius: "0.75rem", display: "flex", alignItems: "center",
+        justifyContent: "center", cursor: currentURL ? "default" : "pointer",
+        background: "#F9FAFB", transition: "border-color 0.15s",
+      }}
       onClick={() => !currentURL && ref.current?.click()}
     >
       {uploading ? (
-        <div className="flex flex-col items-center gap-1"><Loader2 className="w-5 h-5 animate-spin" style={{ color: "#00D4B8" }} /><span className="text-xs" style={{ color: "#C084A0" }}>{uploadPct}%</span></div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+          <Loader2 style={{ width: "1.25rem", height: "1.25rem", color: "#1A73E8" }} className="animate-spin" />
+          <span style={{ fontSize: "0.7rem", color: "#6B7280" }}>{uploadPct}%</span>
+        </div>
       ) : currentURL ? (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={currentURL} alt="" className="w-full h-full object-cover rounded-lg" />
-          <div className="absolute inset-0 flex items-center justify-center gap-1 opacity-0 hover:opacity-100 rounded-lg transition-opacity" style={{ background: "rgba(253,246,241,0.85)" }}>
-            <Button type="button" size="icon" variant="ghost" className="w-7 h-7" style={{ color: "#7A6080" }}
-              onClick={e => { e.stopPropagation(); ref.current?.click(); }}><Upload className="w-3 h-3" /></Button>
-            <Button type="button" size="icon" variant="ghost" className="w-7 h-7" style={{ color: "#DC143C" }}
-              onClick={e => { e.stopPropagation(); onRemove(); }}><X className="w-3 h-3" /></Button>
+          <img src={currentURL} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "0.6rem" }} />
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: "0.6rem",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem",
+            background: "rgba(255,255,255,0.9)", opacity: 0, transition: "opacity 0.15s",
+          }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = "1"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = "0"}>
+            <button type="button" onClick={e => { e.stopPropagation(); ref.current?.click(); }}
+              style={{ background: "#F3F4F6", border: "none", borderRadius: "0.5rem", padding: "0.35rem", cursor: "pointer" }}>
+              <Upload style={{ width: "0.875rem", height: "0.875rem", color: "#374151" }} />
+            </button>
+            <button type="button" onClick={e => { e.stopPropagation(); onRemove(); }}
+              style={{ background: "#FEE2E2", border: "none", borderRadius: "0.5rem", padding: "0.35rem", cursor: "pointer" }}>
+              <X style={{ width: "0.875rem", height: "0.875rem", color: "#DC2626" }} />
+            </button>
           </div>
         </>
       ) : (
-        <div className="flex flex-col items-center gap-1" style={{ color: "#C084A0" }}><ImageIcon className="w-6 h-6" /><span className="text-[10px]">Photo</span></div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.35rem", color: "#9CA3AF" }}>
+          <ImageIcon style={{ width: "1.5rem", height: "1.5rem" }} />
+          <span style={{ fontSize: "0.7rem", fontWeight: 500 }}>Add Photo</span>
+        </div>
       )}
-      <input ref={ref} type="file" accept="image/*" className="hidden"
+      <input ref={ref} type="file" accept="image/*" style={{ display: "none" }}
         onChange={e => { const f = e.target.files?.[0]; if (f) onFileSelected(f); e.target.value = ""; }} />
     </div>
   );
 }
 
-// ── Colour multiselect ────────────────────────────────────────────────────────
+// ── Colour multiselect (pill grid) ────────────────────────────────────────────
 function ColourMultiSelect({ selected, onChange }: {
   selected: string[];
   onChange: (colours: string[]) => void;
@@ -101,37 +130,36 @@ function ColourMultiSelect({ selected, onChange }: {
   }
 
   return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-medium text-foreground">
-        Available Colours
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+        <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#374151" }}>Available Colours</span>
         {selected.length > 0 && (
-          <span className="ml-2 text-xs font-normal text-carnival-teal">
+          <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.15rem 0.5rem", borderRadius: "999px", background: "rgba(26,115,232,0.1)", color: "#1A73E8" }}>
             {selected.length} selected
           </span>
         )}
-      </label>
-      {/* Selected pills */}
-      {selected.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {selected.map(c => (
+      </div>
+      <div style={{
+        display: "flex", flexWrap: "wrap", gap: "0.4rem",
+        maxHeight: "9rem", overflowY: "auto", padding: "0.5rem",
+        border: "1.5px solid #E5E7EB", borderRadius: "0.75rem", background: "#F9FAFB",
+      }}>
+        {COLOUR_OPTIONS.map(c => {
+          const on = selected.includes(c);
+          return (
             <button key={c} type="button" onClick={() => toggle(c)}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-colors"
-              style={{ background: "rgba(0,212,184,0.15)", color: "#00D4B8", border: "1px solid rgba(0,212,184,0.3)" }}>
-              {c} <X className="w-2.5 h-2.5" />
+              style={{
+                fontSize: "0.72rem", fontWeight: on ? 700 : 500,
+                padding: "0.25rem 0.6rem", borderRadius: "999px", cursor: "pointer",
+                border: `1.5px solid ${on ? "#1A73E8" : "#E5E7EB"}`,
+                background: on ? "#1A73E8" : "#FFFFFF",
+                color: on ? "#FFFFFF" : "#374151",
+                transition: "all 0.1s",
+              }}>
+              {c}
             </button>
-          ))}
-        </div>
-      )}
-      {/* Scrollable option list */}
-      <div className="max-h-36 overflow-y-auto rounded-lg p-2 space-y-1"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}>
-        {COLOUR_OPTIONS.map(c => (
-          <label key={c} className="flex items-center gap-2.5 px-2 py-1 rounded-md cursor-pointer transition-colors hover:bg-white/5">
-            <input type="checkbox" checked={selected.includes(c)} onChange={() => toggle(c)}
-              className="w-3.5 h-3.5 rounded accent-carnival-teal" />
-            <span className="text-sm text-foreground">{c}</span>
-          </label>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -207,112 +235,113 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     finally { setSaving(false); }
   }
 
+  const field = (label: string, children: React.ReactNode, icon?: React.ReactNode) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+      <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#374151", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+        {icon}{label}
+      </label>
+      {children}
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="glass-card border-border max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl gold-text">
-            {isEdit ? `Edit - ${gem?.itemNumber}` : "New Supply Item"}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+      <DialogContent>
+        {/* Title */}
+        <div style={{ marginBottom: "1.25rem", paddingBottom: "1rem", borderBottom: "1px solid #F3F4F6" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Gem style={{ width: "1.1rem", height: "1.1rem", color: isEdit ? "#1A73E8" : "#FF006E" }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>
+                {isEdit ? `Edit — ${gem?.itemNumber}` : "New Supply Item"}
+              </h2>
+              <p style={{ fontSize: "0.78rem", color: "#9CA3AF", margin: 0 }}>
+                {isEdit ? "Update supply details" : "Add a gem, trim, fabric or tool"}
+              </p>
+            </div>
+          </div>
+        </div>
 
-          {/* Photo + name */}
-          <div className="flex gap-4 items-start">
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+          {/* Photo + name/category */}
+          <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
             <PhotoUploader currentURL={photoURL} uploading={uploading} uploadPct={uploadPct}
               onFileSelected={handlePhoto}
               onRemove={async () => { if (photoURL) { await deleteFileByURL(photoURL); setPhotoURL(undefined); } }} />
-            <div className="flex-1 space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Item Name</label>
-                <Input className="luxury-input" placeholder="e.g. AB Crystal SS16" value={name} onChange={e => setName(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-foreground">Category</label>
-                <Select value={category} onValueChange={v => setCategory(v as SupplyCategory)}>
-                  <SelectTrigger className="luxury-input"><SelectValue /></SelectTrigger>
-                  <SelectContent style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}>
-                    {(Object.entries(CATEGORY_LABELS) as [SupplyCategory, string][]).map(([k, v]) => (
-                      <SelectItem key={k} value={k} style={{ color: "#1E2029" }}>{v}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              {field("Item Name",
+                <input style={inputStyle} placeholder="e.g. AB Crystal SS16" value={name} onChange={e => setName(e.target.value)} />
+              )}
+              {field("Category",
+                <select value={category} onChange={e => setCategory(e.target.value as SupplyCategory)} style={inputStyle}>
+                  {(Object.entries(CATEGORY_LABELS) as [SupplyCategory, string][]).map(([k, v]) => (
+                    <option key={k} value={k}>{v}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
-          {/* Available colours - multiselect */}
+          {/* Colours */}
           <ColourMultiSelect selected={availableColours} onChange={setAvailableColours} />
 
-          {/* Cost, qty, unit */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Unit Cost ($)</label>
-              <Input type="number" step="0.001" min="0" className="luxury-input" value={unitCost}
+          {/* Cost / Qty / Unit */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
+            {field("Unit Cost ($)",
+              <input type="number" step="0.001" min="0" style={inputStyle} value={unitCost}
                 onChange={e => setUnitCost(parseFloat(e.target.value) || 0)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Qty on Hand</label>
-              <Input type="number" min="0" className="luxury-input" value={qtyOnHand}
+            )}
+            {field("Qty on Hand",
+              <input type="number" min="0" style={inputStyle} value={qtyOnHand}
                 onChange={e => setQtyOnHand(parseFloat(e.target.value) || 0)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Unit</label>
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger className="luxury-input"><SelectValue /></SelectTrigger>
-                <SelectContent style={{ background: "#FFFFFF", border: "1px solid #E5E7EB" }}>
-                  {UNITS.map(u => <SelectItem key={u} value={u} style={{ color: "#1E2029" }}>{u}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            )}
+            {field("Unit",
+              <select value={unit} onChange={e => setUnit(e.target.value)} style={inputStyle}>
+                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            )}
           </div>
 
-          {/* Min order + supplier */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                <ShoppingCart className="w-3.5 h-3.5 text-carnival-coral" />
-                Min. Order
-              </label>
-              <Input className="luxury-input" placeholder="e.g. 200/bag, 10 yards" value={minOrder}
-                onChange={e => setMinOrder(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Supplier</label>
-              <Input className="luxury-input" placeholder="e.g. Alibaba, McDonald & Wang" value={supplier}
-                onChange={e => setSupplier(e.target.value)} />
-            </div>
+          {/* Min order / Supplier */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+            {field("Min. Order",
+              <input style={inputStyle} placeholder="e.g. 200/bag, 10 yards" value={minOrder} onChange={e => setMinOrder(e.target.value)} />,
+              <ShoppingCart style={{ width: "0.85rem", height: "0.85rem", color: "#FF6B35" }} />
+            )}
+            {field("Supplier",
+              <input style={inputStyle} placeholder="e.g. Alibaba" value={supplier} onChange={e => setSupplier(e.target.value)} />
+            )}
           </div>
 
           {/* Product link */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
-              <Link2 className="w-3.5 h-3.5 text-carnival-teal" />
-              Product Link
-            </label>
-            <Input className="luxury-input" placeholder="https://www.alibaba.com/..." value={supplierLink}
-              onChange={e => setSupplierLink(e.target.value)} />
-          </div>
+          {field("Product Link",
+            <input style={inputStyle} placeholder="https://www.alibaba.com/..." value={supplierLink} onChange={e => setSupplierLink(e.target.value)} />,
+            <Link2 style={{ width: "0.85rem", height: "0.85rem", color: "#00BCD4" }} />
+          )}
 
           {/* Notes */}
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Notes</label>
-            <textarea
-              rows={3}
-              className="w-full rounded-md px-3 py-2 text-sm resize-none luxury-input"
-              placeholder="Any extra details - sizing, quality notes, where to find it…"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-            />
-          </div>
+          {field("Notes",
+            <textarea rows={2} style={{ ...inputStyle, resize: "vertical" }}
+              placeholder="Sizing, quality notes, where to find it…"
+              value={notes} onChange={e => setNotes(e.target.value)} />
+          )}
 
-          {error && <p className="text-sm text-crimson">{error}</p>}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="border-border text-muted-foreground">Cancel</Button>
-            <Button type="submit" className="gold-btn" disabled={saving || uploading}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+          {error && <p style={{ fontSize: "0.875rem", color: "#DC2626", margin: 0 }}>{error}</p>}
+
+          {/* Actions */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", paddingTop: "0.5rem", borderTop: "1px solid #F3F4F6", marginTop: "0.25rem" }}>
+            <button type="button" onClick={onClose}
+              style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
+              Cancel
+            </button>
+            <button type="submit" disabled={saving || uploading}
+              style={{ padding: "0.55rem 1.5rem", borderRadius: "0.75rem", border: "none", background: isEdit ? "#1A73E8" : "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: (saving || uploading) ? 0.7 : 1 }}>
+              {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />}
               {isEdit ? "Save Changes" : "Add Item"}
-            </Button>
+            </button>
           </div>
         </form>
       </DialogContent>
