@@ -11,11 +11,51 @@ function toFirestore(data: Record<string, unknown>): Record<string, unknown> {
   );
 }
 
-function fromFirestore(data: Record<string, unknown>): Record<string, unknown> {
+function parseMinOrder(raw: unknown): { minOrderQty: number; minOrderUnit: string } | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const slashMatch = trimmed.match(/^(\d+)\s*\/\s*(\w[\w\s]*)$/);
+  if (slashMatch) {
+    return { minOrderQty: Number(slashMatch[1]), minOrderUnit: slashMatch[2].trim() };
+  }
+  const words = trimmed.split(/\s+/);
+  if (words[0] === "per" && words[1]) {
+    return { minOrderQty: 1, minOrderUnit: words.slice(1).join(" ") };
+  }
+  const qty = Number(words[0]);
+  if (!Number.isNaN(qty) && words.length > 1) {
+    return { minOrderQty: qty, minOrderUnit: words.slice(1).join(" ") };
+  }
+  return null;
+}
+
+function normalizeGemSupply(data: Record<string, unknown>): Record<string, unknown> {
   const out = { ...data };
+  if (out.costUnit === undefined && typeof out.unit === "string") {
+    out.costUnit = out.unit;
+  }
+  if (out.unitCost === undefined || typeof out.unitCost !== "number" || Number.isNaN(out.unitCost)) {
+    const costAmount = typeof out.costAmount === "number" ? out.costAmount : 0;
+    const costQty = typeof out.costQty === "number" ? out.costQty : 0;
+    out.unitCost = costQty > 0 ? costAmount / costQty : 0;
+  }
+  if ((out.minOrderQty === undefined || typeof out.minOrderQty !== "number") && out.minOrder !== undefined) {
+    const parsed = parseMinOrder(out.minOrder);
+    if (parsed) {
+      out.minOrderQty = parsed.minOrderQty;
+      out.minOrderUnit = parsed.minOrderUnit;
+    }
+  }
+  return out;
+}
+
+function fromFirestore(data: Record<string, unknown>): Record<string, unknown> {
+  const out = normalizeGemSupply({ ...data });
   for (const key of ["createdAt", "updatedAt"]) {
-    if ((out as Record<string, unknown>)[key] instanceof Timestamp)
-      (out as Record<string, unknown>)[key] = ((out as Record<string, unknown>)[key] as Timestamp).toDate();
+    if (out[key] instanceof Timestamp) {
+      out[key] = (out[key] as Timestamp).toDate();
+    }
   }
   return out;
 }
@@ -122,16 +162,20 @@ export async function seedGemSupplies(): Promise<void> {
   // Write the flag first so a concurrent call bails out
   await setDoc(flagRef, { seededAt: serverTimestamp() });
   await Promise.all(
-    SEED_SUPPLIES.map(s =>
-      addDoc(collection(db, "gemSupplies"), {
+    SEED_SUPPLIES.map(s => {
+      const parsedMinOrder = parseMinOrder((s as Record<string, unknown>).minOrder);
+      return addDoc(collection(db, "gemSupplies"), {
         ...s,
+        costUnit: (s as Record<string, unknown>).unit ?? "pcs",
+        minOrderQty: parsedMinOrder?.minOrderQty ?? 0,
+        minOrderUnit: parsedMinOrder?.minOrderUnit ?? "pcs",
         supplierLink: (s as Record<string, unknown>).supplierLink ?? null,
         notes: null,
         photoURL: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      })
-    )
+      });
+    })
   );
 }
 

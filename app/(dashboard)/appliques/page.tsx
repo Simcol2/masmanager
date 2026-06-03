@@ -129,12 +129,13 @@ function AddIngredientRow({ gemSupplies, existingIds, onAdd }: {
 
   function handleAdd() {
     if (!selected) return;
+    const unitCost = getGemSupplyUnitCost(selected);
     onAdd({
       gemSupplyId: selected.id,
       gemSupplyName: `${selected.name}${selected.availableColours?.length ? ` (${selected.availableColours[0]})` : ""}`,
       quantity: qty,
-      unitCost: selected.unitCost,
-      lineCost: +(selected.unitCost * qty).toFixed(4),
+      unitCost,
+      lineCost: +(unitCost * qty).toFixed(4),
     });
     setSelectedId(""); setQty(1);
   }
@@ -150,7 +151,7 @@ function AddIngredientRow({ gemSupplies, existingIds, onAdd }: {
         <SelectContent>
           {available.map(g => (
             <SelectItem key={g.id} value={g.id}>
-              {g.itemNumber} - {g.name}{g.availableColours?.length ? ` (${g.availableColours[0]})` : ""} - ${g.unitCost}/{g.costUnit}
+              {g.itemNumber} - {g.name}{g.availableColours?.length ? ` (${g.availableColours[0]})` : ""} - ${getGemSupplyUnitCost(g).toFixed(4)}/ea
             </SelectItem>
           ))}
         </SelectContent>
@@ -508,6 +509,12 @@ const CAT_LABELS: Record<string, string> = {
 };
 
 // ── Visual Applique Builder ───────────────────────────────────────────────────
+function getGemSupplyUnitCost(gem: GemSupply): number {
+  if (typeof gem.unitCost === "number" && Number.isFinite(gem.unitCost)) return gem.unitCost;
+  if (typeof gem.costQty === "number" && gem.costQty > 0) return gem.costAmount / gem.costQty;
+  return 0;
+}
+
 function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }: {
   open: boolean; onClose: () => void; onSaved: () => void;
   gemSupplies: GemSupply[]; applique?: Applique;
@@ -552,10 +559,13 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
     if (ingredients.some(i => i.gemSupplyId === gemId)) {
       setIngredients(prev => prev.filter(i => i.gemSupplyId !== gemId));
     } else {
+      const unitCost = getGemSupplyUnitCost(gem);
       setIngredients(prev => [...prev, {
         gemSupplyId: gem.id,
         gemSupplyName: gem.name + (gem.availableColours?.length ? ` (${gem.availableColours[0]})` : ""),
-        quantity: 1, unitCost: gem.unitCost, lineCost: +(gem.unitCost).toFixed(4),
+        quantity: 1,
+        unitCost,
+        lineCost: +unitCost.toFixed(4),
       }]);
     }
   }
@@ -579,13 +589,20 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
 
   async function handleSave() {
     if (!name.trim()) { setError("Applique name is required"); return; }
+    if (!ingredients.every(i => Number.isFinite(i.unitCost) && Number.isFinite(i.lineCost))) {
+      setError("One or more ingredients have invalid unit cost.");
+      return;
+    }
     setSaving(true); setError("");
     try {
       const payload = { name: name.trim(), notes: notes || undefined, photoURL, ingredients, totalCost };
       if (isEdit && applique) await updateApplique(applique.id, payload);
       else await createApplique(payload);
       onSaved(); onClose();
-    } catch { setError("Failed to save."); } finally { setSaving(false); }
+    } catch (error) {
+      console.error("Failed to save applique", error);
+      setError("Failed to save.");
+    } finally { setSaving(false); }
   }
 
   const iSt: React.CSSProperties = { width: "100%", padding: "0.45rem 0.7rem", fontSize: "0.8rem", border: "1.5px solid #E5E7EB", borderRadius: "0.6rem", background: "#FFFFFF", color: "#1E2029", outline: "none" };

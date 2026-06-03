@@ -386,13 +386,16 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                     <strong style={{ marginLeft: "0.35rem", fontSize: "0.9rem" }}>
                       ${(costAmount / costQty).toFixed(4)}
                     </strong>
-                    <span style={{ color: "#93C5FD", marginLeft: "0.25rem" }}>per {costUnit}</span>
+                    <span style={{ color: "#93C5FD", marginLeft: "0.25rem" }}>per piece</span>
                   </span>
                   <span style={{ marginLeft: "auto", fontSize: "0.72rem", color: "#60A5FA" }}>
                     ${costAmount.toFixed(2)} ÷ {costQty} {costUnit}
                   </span>
                 </div>
               )}
+              <div style={{ fontSize: "0.72rem", color: "#6B7280" }}>
+                Enter the number of pieces covered by this purchase. Example: a $13 bag with 200 pieces should be entered as 13 dollars, 200 quantity, and unit pcs.
+              </div>
               {/* Qty on hand */}
               {field("Quantity on Hand",
                 <input type="number" min="0" style={inputStyle} value={qtyOnHand || ""}
