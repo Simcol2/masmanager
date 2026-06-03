@@ -62,12 +62,16 @@ function DialogContent({
           "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
+        {...props}
         style={{
+          /* Positioning — always fixed, always centered */
           position: "fixed",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
           zIndex: 51,
+          outline: "none",
+          /* Defaults — callers can override by passing style={{}} */
           width: "calc(100% - 2rem)",
           maxWidth: "32rem",
           maxHeight: "90vh",
@@ -77,9 +81,9 @@ function DialogContent({
           borderRadius: "1rem",
           padding: "1.5rem",
           boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-          outline: "none",
+          /* Caller overrides (maxWidth, padding, overflow, etc.) */
+          ...props.style,
         }}
-        {...props}
       >
         {children}
         {showCloseButton && (

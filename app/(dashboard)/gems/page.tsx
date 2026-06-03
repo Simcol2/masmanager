@@ -57,6 +57,18 @@ const CATEGORY_COLOR: Record<SupplyCategory, string> = {
 
 const UNITS = ["pcs", "metres", "cm", "grams", "kg", "ml", "L", "yards", "sheets"];
 
+const DEFAULT_SUPPLIERS = [
+  "Alibaba",
+  "AliExpress",
+  "Amazon",
+  "Dollarama",
+  "Dollar Tree",
+  "John Bead",
+  "McDonald & Wang",
+  "Shein",
+  "Temu",
+];
+
 const COLOUR_OPTIONS = [
   "Clear / Crystal", "AB (Aurora Borealis)", "Gold", "Silver", "Rose Gold",
   "Black", "White", "Red", "Burgundy", "Pink", "Hot Pink", "Coral", "Orange",
@@ -190,6 +202,10 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
   const [minOrder, setMinOrder] = useState(gem?.minOrder ?? "");
   const [supplierLink, setSupplierLink] = useState(gem?.supplierLink ?? "");
   const [supplier, setSupplier] = useState(gem?.supplier ?? "");
+  const [customSupplierMode, setCustomSupplierMode] = useState(
+    !!(gem?.supplier && !DEFAULT_SUPPLIERS.includes(gem.supplier))
+  );
+  const [extraSuppliers, setExtraSuppliers] = useState<string[]>([]);
   const [notes, setNotes] = useState(gem?.notes ?? "");
   const [photoURL, setPhotoURL] = useState<string | undefined>(gem?.photoURL);
   const [uploading, setUploading] = useState(false);
@@ -209,6 +225,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     setMinOrder(gem?.minOrder ?? "");
     setSupplierLink(gem?.supplierLink ?? "");
     setSupplier(gem?.supplier ?? "");
+    setCustomSupplierMode(!!(gem?.supplier && !DEFAULT_SUPPLIERS.includes(gem.supplier ?? "")));
     setNotes(gem?.notes ?? "");
     setPhotoURL(gem?.photoURL);
     setError("");
@@ -338,7 +355,57 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                 <ShoppingCart style={{ width: "0.85rem", height: "0.85rem", color: "#FF6B35" }} />
               )}
               {field("Supplier",
-                <input style={inputStyle} placeholder="e.g. Alibaba" value={supplier} onChange={e => setSupplier(e.target.value)} />
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  <select
+                    style={inputStyle}
+                    value={customSupplierMode ? "__custom__" : (supplier || "")}
+                    onChange={e => {
+                      if (e.target.value === "__custom__") {
+                        setCustomSupplierMode(true);
+                        setSupplier("");
+                      } else {
+                        setCustomSupplierMode(false);
+                        setSupplier(e.target.value);
+                      }
+                    }}
+                  >
+                    <option value="">— Select supplier —</option>
+                    {[...DEFAULT_SUPPLIERS, ...extraSuppliers].sort().map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                    <option value="__custom__">+ Add new supplier…</option>
+                  </select>
+                  {customSupplierMode && (
+                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                      <input
+                        style={{ ...inputStyle, flex: 1 }}
+                        placeholder="Type supplier name…"
+                        value={supplier}
+                        onChange={e => setSupplier(e.target.value)}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (supplier.trim() && !DEFAULT_SUPPLIERS.includes(supplier.trim())) {
+                            setExtraSuppliers(prev => [...prev, supplier.trim()]);
+                          }
+                          setCustomSupplierMode(false);
+                        }}
+                        style={{ padding: "0.4rem 0.75rem", borderRadius: "0.6rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setCustomSupplierMode(false); setSupplier(""); }}
+                        style={{ padding: "0.4rem 0.5rem", borderRadius: "0.6rem", border: "1.5px solid #E5E7EB", background: "#fff", color: "#6B7280", cursor: "pointer" }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

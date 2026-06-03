@@ -592,7 +592,10 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden" }}>
+      <DialogContent
+        onOpenAutoFocus={e => e.preventDefault()}
+        style={{ maxWidth: "62rem", width: "calc(100vw - 2rem)", padding: 0, overflow: "hidden" }}
+      >
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.25rem", borderBottom: "1px solid #F3F4F6" }}>
           <div style={{ width: "2rem", height: "2rem", borderRadius: "0.5rem", background: isEdit ? "rgba(26,115,232,0.1)" : "rgba(255,0,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
