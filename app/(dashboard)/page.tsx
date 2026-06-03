@@ -7,6 +7,7 @@ import { Users, Package, Shirt, ArrowRight, Plus, Library, Sparkles, Gem, Calend
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { getRegistrations } from "@/lib/services/registrations";
+import { getParentShirts, seedParentShirts } from "@/lib/services/parent-shirts";
 import { type CostumeType, CostumeTypeLabels } from "@/types";
 
 const COSTUME_ORDER: CostumeType[] = [
@@ -30,9 +31,14 @@ const QUICK_LINKS = [
 export default function DashboardPage() {
   const { user } = useAuth();
   const [registrations, setRegistrations] = useState<Awaited<ReturnType<typeof getRegistrations>>>([]);
+  const [shirtOrders, setShirtOrders] = useState<Awaited<ReturnType<typeof getParentShirts>>>([]);
 
   useEffect(() => {
     getRegistrations("2026").then(setRegistrations).catch(console.error);
+    seedParentShirts()
+      .then(() => getParentShirts("2026"))
+      .then(setShirtOrders)
+      .catch(console.error);
   }, []);
 
   const total = registrations.length;
@@ -44,7 +50,7 @@ export default function DashboardPage() {
 
   const STAT_CARDS = [
     { title: "Registrations", value: total, href: "/registrations", icon: Users,    bg: "#FF006E", light: "rgba(255,0,110,0.1)" },
-    { title: "Shirt Orders",  value: "—",   href: "/parent-shirts", icon: Shirt,    bg: "#00BCD4", light: "rgba(0,188,212,0.1)" },
+    { title: "Shirt Orders",  value: shirtOrders.reduce((s, o) => s + o.quantity, 0), href: "/parent-shirts", icon: Shirt, bg: "#00BCD4", light: "rgba(0,188,212,0.1)" },
     { title: "Costume Pieces",value: "—",   href: "/pieces",        icon: Library,  bg: "#FFD60A", light: "rgba(255,214,10,0.12)" },
     { title: "Appliques",     value: "—",   href: "/appliques",     icon: Sparkles, bg: "#673AB7", light: "rgba(103,58,183,0.1)" },
   ];
@@ -156,8 +162,9 @@ export default function DashboardPage() {
               <Shirt style={{ width: "1rem", height: "1rem", color: "#00BCD4" }} />
             </div>
           </div>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem 0" }}>
-            <p style={{ fontSize: "0.875rem", color: "#9CA3AF", textAlign: "center" }}>View and manage shirt orders on the Parent Shirts page.</p>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "1.5rem 0", gap: "0.5rem" }}>
+            <p style={{ fontSize: "2rem", fontWeight: 800, color: "#1E2029", lineHeight: 1 }}>{shirtOrders.reduce((s, o) => s + o.quantity, 0)}</p>
+            <p style={{ fontSize: "0.875rem", color: "#9CA3AF", textAlign: "center" }}>shirts ordered for 2026</p>
           </div>
           <div style={{ paddingTop: "1rem", borderTop: "1px solid #F3F4F6" }}>
             <Link href="/parent-shirts">
