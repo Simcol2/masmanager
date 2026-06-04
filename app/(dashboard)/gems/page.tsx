@@ -456,7 +456,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
               <p style={{ fontSize: "0.72rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#9CA3AF", margin: 0 }}>Cost</p>
               {/* "$X for Y <unit>" */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem", alignItems: "end" }}>
-                {field("Amount paid ($)",
+                {field("Price ($)",
                   <input type="number" step="0.01" min="0" style={inputStyle} value={costAmount}
                     placeholder="e.g. 13"
                     onChange={e => setCostAmount(e.target.value)} />

@@ -63,21 +63,62 @@ function detectSupplier(url: string): string | null {
   return null;
 }
 
-// Parse price from strings like "$3.50 - $12.00 / Pack" or "US $0.50/piece"
-function parsePrice(text: string): { amount: number; qty: number; unit: string } | null {
-  // Remove commas from numbers
+// Parse price from strings like "$3.50 - $12.00 / Pack" or "US $0.50/piece" or "USD1.50"
+function parsePrice(text: string): { amount: number; unit: string } | null {
   const clean = text.replace(/,/g, "");
-  // Match first dollar amount (USD or just $)
-  const priceMatch = clean.match(/(?:US\s*)?\$\s*([\d.]+)/i);
+  // Patterns: "$3.50", "US $3.50", "USD 3.50", "USD3.50"
+  const priceMatch = clean.match(/(?:US[D]?\s*)?\$\s*([\d.]+)|USD\s*([\d.]+)/i);
   if (!priceMatch) return null;
-  const amount = parseFloat(priceMatch[1]);
-  if (!amount || isNaN(amount)) return null;
+  const amount = parseFloat(priceMatch[1] ?? priceMatch[2]);
+  if (!amount || isNaN(amount) || amount <= 0) return null;
 
-  // Try to find unit after the price range
-  const unitMatch = clean.match(/\/\s*(pack|bag|piece|pcs|yard|metre|meter|roll|spool|sheet|feet|gram|kg|box|set)/i);
-  const unit = unitMatch ? unitMatch[1].toLowerCase().replace("meter", "metre") : "pcs";
+  // Try to find unit after a slash
+  const unitMatch = clean.match(/\/\s*(pack|bag|piece|pcs|pc|yard|metre|meter|roll|spool|sheet|feet|gram|kg|box|set)/i);
+  let unit = unitMatch ? unitMatch[1].toLowerCase() : "pcs";
+  if (unit === "piece" || unit === "pc") unit = "pcs";
+  if (unit === "meter") unit = "metre";
 
-  return { amount, qty: 1, unit };
+  return { amount, unit };
+}
+
+// Try to extract price from JSON-LD structured data embedded in the page
+function extractJsonLdPrice(html: string): { amount: number; unit: string } | null {
+  const scripts = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const [, json] of scripts) {
+    try {
+      const data = JSON.parse(json);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        const offers = item?.offers ?? item?.["@graph"]?.find?.((n: Record<string, unknown>) => n?.["@type"] === "Offer");
+        const offer = Array.isArray(offers) ? offers[0] : offers;
+        const raw = offer?.price ?? offer?.lowPrice ?? item?.price;
+        if (raw) {
+          const amount = parseFloat(String(raw).replace(/,/g, ""));
+          if (!isNaN(amount) && amount > 0) return { amount, unit: "pcs" };
+        }
+      }
+    } catch { /* ignore malformed JSON */ }
+  }
+  return null;
+}
+
+// Try itemprop="price" or data-price attributes
+function extractInnlinePrice(html: string): { amount: number; unit: string } | null {
+  const patterns = [
+    /itemprop=["'](?:low)?[Pp]rice["'][^>]*content=["']([\d.,]+)["']/i,
+    /content=["']([\d.,]+)["'][^>]*itemprop=["'](?:low)?[Pp]rice["']/i,
+    /data-price=["']([\d.,]+)["']/i,
+    /"price"\s*:\s*"?([\d.]+)"?/,
+    /"lowPrice"\s*:\s*"?([\d.]+)"?/,
+  ];
+  for (const pat of patterns) {
+    const m = html.match(pat);
+    if (m?.[1]) {
+      const amount = parseFloat(m[1].replace(/,/g, ""));
+      if (!isNaN(amount) && amount > 0) return { amount, unit: "pcs" };
+    }
+  }
+  return null;
 }
 
 // Parse quantity from title like "1440pcs", "200 pieces", "10 yards"
@@ -186,14 +227,18 @@ export async function POST(req: NextRequest) {
   const shape    = detectShape(searchText);
   const supplier = detectSupplier(finalUrl);
 
-  // Price: try og:description first, then full page snippet
-  const priceInfo = parsePrice(ogDesc) ?? parsePrice(name);
-  // Quantity: usually in product title
-  const qtyInfo   = parseQty(name) ?? parseQty(ogDesc);
-  // Min order: often in description
-  const minInfo   = parseMinOrder(ogDesc) ?? parseMinOrder(html.slice(0, 8000));
+  // Price: cascade through extraction methods
+  const priceInfo =
+    parsePrice(ogDesc) ??
+    parsePrice(name) ??
+    extractJsonLdPrice(html) ??
+    extractInnlinePrice(html);
 
-  // If we found qty in the name, and price is per-unit, the cost is for that many pcs
+  // Quantity: usually in product title
+  const qtyInfo = parseQty(name) ?? parseQty(ogDesc);
+  // Min order: often in description or early HTML
+  const minInfo = parseMinOrder(ogDesc) ?? parseMinOrder(html.slice(0, 12000));
+
   let costAmount: number | undefined;
   let costQty: number | undefined;
   let costUnit: string | undefined;
@@ -201,8 +246,8 @@ export async function POST(req: NextRequest) {
   if (priceInfo) {
     costAmount = priceInfo.amount;
     costUnit   = priceInfo.unit;
-    // If qty was found in name, use it as the quantity covered by that price
-    if (qtyInfo && (qtyInfo.unit === costUnit || costUnit === "pcs" || costUnit === "pack" || costUnit === "bag")) {
+    // If a qty was in the title AND the price appears to be per-lot, use that qty
+    if (qtyInfo && (qtyInfo.unit === costUnit || ["pcs", "pack", "bag", "box", "set"].includes(costUnit))) {
       costQty = qtyInfo.qty;
     } else {
       costQty = 1;
