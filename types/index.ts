@@ -395,6 +395,78 @@ export const ProductionPieceSchema = z.object({
   updatedAt: z.date(),
 });
 
+// ─── Build Tracker ───────────────────────────────────────────────────────────
+
+// Full pool of possible production steps
+export const ALL_PRODUCTION_STEPS = [
+  "Fabric cut",
+  "Straps added",
+  "Gems added",
+  "Iron on completed",
+  "Wire wrapped",
+  "Wire bent",
+  "Base layer cut",
+  "Grommets added",
+  "Kente added",
+  "Necklaces added",
+  "HTV added",
+  "Trims added",
+  "D-rings added",
+  "Fabric added",
+  "Base layer back side fabric added",
+  "Feathers added",
+] as const;
+
+export type ProductionStep = (typeof ALL_PRODUCTION_STEPS)[number];
+
+// Default step list per piece name (suggested starting point in step picker)
+export const PIECE_STEP_DEFAULTS: Record<string, string[]> = {
+  "Arm Bands":   ["Fabric cut", "Straps added", "Gems added", "Iron on completed"],
+  "Leg Bands":   ["Fabric cut", "Straps added", "Gems added", "Iron on completed"],
+  "Thigh Bands": ["Fabric cut", "Straps added", "Gems added", "Iron on completed"],
+  "Belt":        ["Fabric cut", "Straps added", "Gems added", "Iron on completed"],
+  "Head Piece":  ["Wire wrapped", "Gems added"],
+  "Collar":      ["Base layer cut", "Gems added"],
+  "Top":         ["Base layer cut", "Grommets added", "Kente added", "Necklaces added", "Straps added", "HTV added"],
+  "Shorts":      ["Kente added", "Gems added"],
+  "Backpack":    ["Wire bent", "Wire wrapped", "D-rings added", "Fabric added", "Base layer back side fabric added", "Gems added", "Feathers added"],
+  "Shoes":       ["Kente added", "Gems added"],
+  "Chest Piece": ["Base layer cut", "Trims added", "Gems added", "Grommets added", "Straps added", "Wire wrapped"],
+  "Necklace":    ["Base layer cut", "Gems added"],
+  "Half Skirt":  ["Base layer cut", "Gems added"],
+  "Tutu":        ["Base layer cut", "Gems added"],
+};
+
+// A single build step for one piece+costumeType in a season
+export const SeasonPieceStepSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  costumeType: CostumeType,
+  pieceName: z.string(),
+  stepName: z.string(),
+  sortOrder: z.number().int().min(0).default(0),
+  status: z.enum(["not_started", "material_needed", "completed"]).default("not_started"),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// A scheduled task: assign a step to a volunteer on a date with a quantity
+export const ProductionTaskSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  costumeType: CostumeType,
+  pieceName: z.string(),
+  stepName: z.string().optional(),
+  description: z.string().min(1),
+  quantity: z.number().int().min(1).default(1),
+  assignedTo: z.string().optional(),
+  dueDate: z.date().optional(),
+  completed: z.boolean().default(false),
+  notes: z.string().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
 // Dashboard Metrics
 export const DashboardMetricsSchema = z.object({
   totalRegistrations: z.number(),
@@ -433,6 +505,8 @@ export type CostumePiece = z.infer<typeof CostumePieceSchema>;
 export type CostumeRecipe = z.infer<typeof CostumeRecipeSchema>;
 export type ProductionPiece = z.infer<typeof ProductionPieceSchema>;
 export type DashboardMetrics = z.infer<typeof DashboardMetricsSchema>;
+export type SeasonPieceStep = z.infer<typeof SeasonPieceStepSchema>;
+export type ProductionTask = z.infer<typeof ProductionTaskSchema>;
 
 // Costume type display names
 export const CostumeTypeLabels: Record<CostumeType, string> = {

@@ -7,17 +7,20 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   CalendarDays, Users, Sparkles, ChevronDown, ChevronUp,
   Plus, X, Check, Loader2, ChevronRight, Upload, Download, FileText, ImageIcon,
-  Pencil,
+  Pencil, ListChecks,
 } from "lucide-react";
 import {
   type CostumeType, CostumeTypeLabels,
   type MasterPiece, type SeasonPieceConfig, type Registration,
   type SeasonAsset, SeasonAssetCategory,
+  type SeasonPieceStep,
+  ALL_PRODUCTION_STEPS, PIECE_STEP_DEFAULTS,
 } from "@/types";
 import {
   getMasterPieces, seedDefaultPieces,
   upsertSeasonPieceConfig, getSeasonPieceConfigs, deleteSeasonPieceConfig,
 } from "@/lib/services/pieces";
+import { getSeasonPieceSteps, saveSeasonPieceSteps } from "@/lib/services/productionSteps";
 import { getSeasonAssets, createSeasonAsset, deleteSeasonAsset, renameSeasonAsset } from "@/lib/services/seasonAssets";
 import { uploadSeasonAsset } from "@/lib/services/storage";
 import { getRegistrations, seedRegistrations } from "@/lib/services/registrations";
@@ -139,6 +142,12 @@ function CostumeDetailDialog({
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Build steps
+  const [pieceSteps, setPieceSteps] = useState<SeasonPieceStep[]>([]);
+  const [configPiece, setConfigPiece] = useState<string | null>(null);
+  const [selectedStepNames, setSelectedStepNames] = useState<string[]>([]);
+  const [savingSteps, setSavingSteps] = useState(false);
+
   useEffect(() => {
     if (!open || !costumeType) return;
     let cancelled = false;
@@ -151,10 +160,12 @@ function CostumeDetailDialog({
       seedDefaultPieces().catch(() => {}),
       getMasterPieces(),
       getSeasonPieceConfigs(season),
-    ]).then(([, pieces, allConfigs]) => {
+      getSeasonPieceSteps(season),
+    ]).then(([, pieces, allConfigs, allSteps]) => {
       if (cancelled) return;
       setMasterPieces(pieces);
       setPieceConfigs(allConfigs.filter(c => c.costumeType === costumeType));
+      setPieceSteps(allSteps.filter(s => s.costumeType === costumeType));
     }).catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
 
@@ -191,6 +202,36 @@ function CostumeDetailDialog({
       setPieceConfigs(prev => prev.filter(c => c.id !== configId));
     } catch (e) { console.error(e); }
     finally { setRemovingId(null); }
+  }
+
+  function openStepConfig(pieceName: string) {
+    const existing = pieceSteps.filter(s => s.pieceName === pieceName).sort((a, b) => a.sortOrder - b.sortOrder);
+    if (existing.length > 0) {
+      setSelectedStepNames(existing.map(s => s.stepName));
+    } else {
+      setSelectedStepNames(PIECE_STEP_DEFAULTS[pieceName] ?? []);
+    }
+    setConfigPiece(pieceName);
+  }
+
+  function toggleStep(stepName: string) {
+    setSelectedStepNames(prev =>
+      prev.includes(stepName) ? prev.filter(s => s !== stepName) : [...prev, stepName]
+    );
+  }
+
+  async function handleSaveSteps() {
+    if (!configPiece || !costumeType) return;
+    setSavingSteps(true);
+    try {
+      const saved = await saveSeasonPieceSteps(season, costumeType, configPiece, selectedStepNames);
+      setPieceSteps(prev => [
+        ...prev.filter(s => s.pieceName !== configPiece),
+        ...saved,
+      ]);
+      setConfigPiece(null);
+    } catch (e) { console.error(e); }
+    finally { setSavingSteps(false); }
   }
 
   if (!costumeType) return null;
@@ -326,6 +367,100 @@ function CostumeDetailDialog({
                         ? <Loader2 style={{ width: "0.65rem", height: "0.65rem" }} className="animate-spin" />
                         : <X style={{ width: "0.65rem", height: "0.65rem" }} />}
                     </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ── Build Steps ── */}
+          <section>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+              <h3 style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", margin: 0 }}>
+                Build Steps
+              </h3>
+              <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>tap a piece to configure</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {defaultPieces.map(p => {
+                const stepsForPiece = pieceSteps.filter(s => s.pieceName === p.piece).sort((a, b) => a.sortOrder - b.sortOrder);
+                const isConfiguring = configPiece === p.piece;
+                return (
+                  <div key={p.piece + (p.notes ?? "")} style={{ border: "1px solid #E5E7EB", borderRadius: "0.75rem", overflow: "hidden" }}>
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.875rem", cursor: "pointer", background: isConfiguring ? "#F9FAFB" : "#FFFFFF" }}
+                      onClick={() => isConfiguring ? setConfigPiece(null) : openStepConfig(p.piece)}
+                    >
+                      <ListChecks style={{ width: "0.9rem", height: "0.9rem", color: stepsForPiece.length > 0 ? "#1A73E8" : "#D1D5DB", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1E2029", margin: 0 }}>
+                          {p.piece}{p.notes ? <span style={{ fontSize: "0.75rem", color: "#9CA3AF", fontWeight: 400 }}> ({p.notes})</span> : null}
+                        </p>
+                        {stepsForPiece.length > 0 ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.25rem" }}>
+                            {stepsForPiece.map(s => (
+                              <span key={s.id} style={{ fontSize: "0.65rem", fontWeight: 600, padding: "0.1rem 0.4rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", color: "#1A73E8" }}>
+                                {s.stepName}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "0.15rem 0 0" }}>No steps configured</p>
+                        )}
+                      </div>
+                      {isConfiguring ? <ChevronUp style={{ width: "0.875rem", height: "0.875rem", color: "#9CA3AF", flexShrink: 0 }} /> : <ChevronDown style={{ width: "0.875rem", height: "0.875rem", color: "#9CA3AF", flexShrink: 0 }} />}
+                    </div>
+
+                    {isConfiguring && (
+                      <div style={{ padding: "0.875rem", borderTop: "1px solid #F3F4F6", background: "#FAFAFA", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                        <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151", margin: 0 }}>
+                          Select build steps for {p.piece}{p.notes ? ` (${p.notes})` : ""}
+                        </p>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
+                          {ALL_PRODUCTION_STEPS.map(step => {
+                            const checked = selectedStepNames.includes(step);
+                            return (
+                              <button
+                                key={step}
+                                onClick={() => toggleStep(step)}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: "0.4rem",
+                                  padding: "0.5rem 0.625rem", borderRadius: "0.5rem",
+                                  border: `1.5px solid ${checked ? "#1A73E8" : "#E5E7EB"}`,
+                                  background: checked ? "rgba(26,115,232,0.07)" : "#FFFFFF",
+                                  cursor: "pointer", textAlign: "left",
+                                }}>
+                                <div style={{
+                                  width: "1rem", height: "1rem", borderRadius: "0.25rem", flexShrink: 0,
+                                  background: checked ? "#1A73E8" : "transparent",
+                                  border: `1.5px solid ${checked ? "#1A73E8" : "#D1D5DB"}`,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                }}>
+                                  {checked && <Check style={{ width: "0.65rem", height: "0.65rem", color: "#fff" }} />}
+                                </div>
+                                <span style={{ fontSize: "0.78rem", color: checked ? "#1A73E8" : "#374151", fontWeight: checked ? 600 : 400, lineHeight: 1.3 }}>
+                                  {step}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
+                          <button
+                            onClick={() => setConfigPiece(null)}
+                            style={{ padding: "0.45rem 0.875rem", fontSize: "0.8rem", border: "1.5px solid #E5E7EB", borderRadius: "0.5rem", background: "#fff", cursor: "pointer", color: "#374151", fontWeight: 500 }}>
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveSteps}
+                            disabled={savingSteps}
+                            style={{ padding: "0.45rem 0.875rem", fontSize: "0.8rem", border: "none", borderRadius: "0.5rem", background: accent, color: "#fff", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.3rem", opacity: savingSteps ? 0.7 : 1 }}>
+                            {savingSteps ? <Loader2 style={{ width: "0.75rem", height: "0.75rem" }} className="animate-spin" /> : <Check style={{ width: "0.75rem", height: "0.75rem" }} />}
+                            Save steps
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

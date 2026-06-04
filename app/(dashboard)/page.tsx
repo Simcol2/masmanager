@@ -3,12 +3,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Users, Package, Shirt, ArrowRight, Plus, Library, Sparkles, Gem, CalendarDays, TrendingUp } from "lucide-react";
+import { Users, Package, Shirt, ArrowRight, Plus, Library, Sparkles, Gem, CalendarDays, TrendingUp, Hammer } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { getRegistrations } from "@/lib/services/registrations";
 import { getParentShirts, seedParentShirts } from "@/lib/services/parent-shirts";
-import { type CostumeType, CostumeTypeLabels } from "@/types";
+import { getSeasonPieceSteps } from "@/lib/services/productionSteps";
+import { type CostumeType, CostumeTypeLabels, type SeasonPieceStep } from "@/types";
 
 const COSTUME_ORDER: CostumeType[] = [
   "girls_backline", "boys_backline", "toddler_frontline",
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [registrations, setRegistrations] = useState<Awaited<ReturnType<typeof getRegistrations>>>([]);
   const [shirtOrders, setShirtOrders] = useState<Awaited<ReturnType<typeof getParentShirts>>>([]);
+  const [buildSteps, setBuildSteps] = useState<SeasonPieceStep[]>([]);
 
   useEffect(() => {
     getRegistrations("2026").then(setRegistrations).catch(console.error);
@@ -39,6 +41,7 @@ export default function DashboardPage() {
       .then(() => getParentShirts("2026"))
       .then(setShirtOrders)
       .catch(console.error);
+    getSeasonPieceSteps("2026").then(setBuildSteps).catch(console.error);
   }, []);
 
   const total = registrations.length;
@@ -175,6 +178,61 @@ export default function DashboardPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Build progress */}
+      {buildSteps.length > 0 && (() => {
+        // Group by pieceName across all costume types
+        const byPiece = new Map<string, SeasonPieceStep[]>();
+        for (const step of buildSteps) {
+          if (!byPiece.has(step.pieceName)) byPiece.set(step.pieceName, []);
+          byPiece.get(step.pieceName)!.push(step);
+        }
+        const pieces = Array.from(byPiece.entries()).sort(([a], [b]) => a.localeCompare(b));
+        const totalDone = buildSteps.filter(s => s.status === "completed").length;
+        const totalAll = buildSteps.length;
+        const overallPct = totalAll > 0 ? Math.round((totalDone / totalAll) * 100) : 0;
+
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
+            style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.5rem", boxShadow: "0 1px 3px rgba(0,0,0,0.07)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <Hammer style={{ width: "1rem", height: "1rem", color: "#F97316" }} />
+                <h2 style={{ fontSize: "0.8rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#6B7280", margin: 0 }}>Build Progress</h2>
+              </div>
+              <span style={{ fontSize: "1.25rem", fontWeight: 800, color: overallPct === 100 ? "#059669" : "#1E2029" }}>{overallPct}%</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              {pieces.map(([pieceName, steps]) => {
+                const done = steps.filter(s => s.status === "completed").length;
+                const pct = steps.length > 0 ? Math.round((done / steps.length) * 100) : 0;
+                const hasMaterial = steps.some(s => s.status === "material_needed");
+                return (
+                  <div key={pieceName} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <span style={{ fontSize: "0.82rem", color: "#374151", width: "7.5rem", flexShrink: 0 }}>{pieceName}</span>
+                    <div style={{ flex: 1, height: "7px", borderRadius: "4px", background: "#F3F4F6", overflow: "hidden" }}>
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.7, delay: 0.4 }}
+                        style={{ height: "100%", borderRadius: "4px", background: pct === 100 ? "#059669" : hasMaterial ? "#D97706" : "#1A73E8" }}
+                      />
+                    </div>
+                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1E2029", width: "2.5rem", textAlign: "right", flexShrink: 0 }}>{pct}%</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ marginTop: "1rem", paddingTop: "0.875rem", borderTop: "1px solid #F3F4F6" }}>
+              <Link href="/production">
+                <Button variant="ghost" style={{ width: "100%", color: "#F97316", fontWeight: 600, fontSize: "0.875rem" }}>
+                  View Build Tracker <ArrowRight style={{ width: "1rem", height: "1rem", marginLeft: "0.5rem" }} />
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+        );
+      })()}
 
       {/* Quick access */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>

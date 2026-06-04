@@ -441,7 +441,7 @@ function PatternView({ piece, onBack }: { piece: PieceDef; onBack: () => void })
           <div style={{ fontFamily: "'Nunito', sans-serif", fontWeight: 900, fontSize: 15, color: piece.color, marginBottom: 12 }}>SIZE CHART</div>
           <DataTable cols={piece.cols} rows={piece.data} highlightCol={piece.highlightCol} />
           <div style={{ fontSize: 11, color: C.muted, marginTop: 8, fontFamily: "'DM Sans', sans-serif" }}>
-            No seam allowance -- raw edge finish. L1 = top layer. L2 = L1 square + 3". L3 = L1 square + 6". Each +3" square = +1.5" visible length.
+            No seam allowance, raw edge finish. L1 = top layer. L2 = L1 square + 3&quot;. L3 = L1 square + 6&quot;. Each +3&quot; square = +1.5&quot; visible length.
           </div>
         </Card>
       )}
@@ -487,7 +487,7 @@ function BodyMeasurementView() {
                 <td style={{ padding: "8px 10px", color: current.color, fontWeight: 900, borderBottom: `1px solid ${C.border}`, fontFamily: "'Nunito', sans-serif" }}>{row.us}</td>
                 <td style={{ padding: "8px 10px", color: C.muted, borderBottom: `1px solid ${C.border}` }}>{row.age}</td>
                 {measurementCols.map(col => (
-                  <td key={col.key} style={{ padding: "8px 10px", color: C.text, borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{row[col.key]}"</td>
+                  <td key={col.key} style={{ padding: "8px 10px", color: C.text, borderBottom: `1px solid ${C.border}`, whiteSpace: "nowrap" }}>{row[col.key]}&quot;</td>
                 ))}
               </tr>
             ))}
@@ -528,7 +528,7 @@ function ShoeView() {
                 onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = i % 2 === 0 ? C.white : C.surface}>
                 <td style={{ padding: "9px 16px", color: current.color, fontWeight: 900, borderBottom: `1px solid ${C.border}`, fontFamily: "'Nunito', sans-serif" }}>{row.us}</td>
                 <td style={{ padding: "9px 16px", color: C.blue, fontWeight: 700, borderBottom: `1px solid ${C.border}` }}>{row.cn}</td>
-                <td style={{ padding: "9px 16px", color: C.text, borderBottom: `1px solid ${C.border}` }}>{row.footIn}"</td>
+                <td style={{ padding: "9px 16px", color: C.text, borderBottom: `1px solid ${C.border}` }}>{row.footIn}&quot;</td>
               </tr>
             ))}
           </tbody>
