@@ -1060,7 +1060,7 @@ function IngredientPicker({
                   <span style={{ fontSize: "0.6rem", fontWeight: 700, padding: "0.08rem 0.35rem", borderRadius: "999px", background: ing.type === "supply" ? "rgba(26,115,232,0.08)" : "rgba(255,0,110,0.08)", color: ing.type === "supply" ? "#1A73E8" : "#FF006E" }}>{ing.type === "supply" ? "Supply" : "Applique"}</span>
                   <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1E2029", margin: "0.1rem 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ing.gemSupplyName ?? ing.appliqueName}</p>
                   {ing.dimLength ? (
-                    <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: 0 }}>{ing.dimWidth ? `${ing.dimWidth}" × ` : ""}{ing.dimLength}" = {ing.quantity.toFixed(3)} units</p>
+                    <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: 0 }}>{ing.dimWidth ? `${ing.dimWidth}″ × ` : ""}{ing.dimLength}&quot; = {ing.quantity.toFixed(3)} units</p>
                   ) : (
                     <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: 0 }}>${ing.unitCost.toFixed(4)}/ea</p>
                   )}

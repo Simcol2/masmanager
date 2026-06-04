@@ -813,7 +813,7 @@ function PieceBuilderDialog({
                             </p>
                             {ing.dimLength ? (
                               <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: 0 }}>
-                                {ing.dimWidth ? `${ing.dimWidth}" × ` : ""}{ing.dimLength}" = {ing.quantity.toFixed(3)} {ing.gemSupplyId && gemSupplies.find(g => g.id === ing.gemSupplyId)?.costUnit ? unitLabel(gemSupplies.find(g => g.id === ing.gemSupplyId)!.costUnit) : "units"}
+                                {ing.dimWidth ? `${ing.dimWidth}″ × ` : ""}{ing.dimLength}&quot; = {ing.quantity.toFixed(3)} {ing.gemSupplyId && gemSupplies.find(g => g.id === ing.gemSupplyId)?.costUnit ? unitLabel(gemSupplies.find(g => g.id === ing.gemSupplyId)!.costUnit) : "units"}
                               </p>
                             ) : (
                               <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: 0 }}>
