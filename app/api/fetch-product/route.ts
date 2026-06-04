@@ -102,14 +102,39 @@ function extractJsonLdPrice(html: string): { amount: number; unit: string } | nu
   return null;
 }
 
-// Try itemprop="price" or data-price attributes
-function extractInnlinePrice(html: string): { amount: number; unit: string } | null {
+// Scan all <script> tag content for JSON price keys (catches Alibaba window state injection)
+function extractScriptPrice(html: string): { amount: number; unit: string } | null {
+  // Collect all script tag bodies
+  const scriptBodies: string[] = [];
+  for (const [, body] of html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)) {
+    if (body.length > 20) scriptBodies.push(body);
+  }
+  const combined = scriptBodies.join("\n");
+
+  // Price keys to look for, in priority order
+  const priceKeys = [
+    "\"price\"", "\"priceFrom\"", "\"minPrice\"", "\"startPrice\"", "\"lowPrice\"",
+    "'price'", "price:", "priceMin:", "priceFrom:",
+  ];
+  for (const key of priceKeys) {
+    // Match key followed by colon/equals and a numeric value (optionally quoted)
+    const pat = new RegExp(`${key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*[:\\=]\\s*["']?([0-9]+\\.?[0-9]*)["']?`, "i");
+    const m = combined.match(pat);
+    if (m?.[1]) {
+      const amount = parseFloat(m[1]);
+      if (!isNaN(amount) && amount > 0 && amount < 100000) return { amount, unit: "pcs" };
+    }
+  }
+  return null;
+}
+
+// Try itemprop="price" or data-price attributes in HTML markup
+function extractAttributePrice(html: string): { amount: number; unit: string } | null {
   const patterns = [
     /itemprop=["'](?:low)?[Pp]rice["'][^>]*content=["']([\d.,]+)["']/i,
     /content=["']([\d.,]+)["'][^>]*itemprop=["'](?:low)?[Pp]rice["']/i,
     /data-price=["']([\d.,]+)["']/i,
-    /"price"\s*:\s*"?([\d.]+)"?/,
-    /"lowPrice"\s*:\s*"?([\d.]+)"?/,
+    /data-min-price=["']([\d.,]+)["']/i,
   ];
   for (const pat of patterns) {
     const m = html.match(pat);
@@ -227,12 +252,13 @@ export async function POST(req: NextRequest) {
   const shape    = detectShape(searchText);
   const supplier = detectSupplier(finalUrl);
 
-  // Price: cascade through extraction methods
+  // Price: cascade through extraction methods — most specific first
   const priceInfo =
     parsePrice(ogDesc) ??
     parsePrice(name) ??
     extractJsonLdPrice(html) ??
-    extractInnlinePrice(html);
+    extractAttributePrice(html) ??
+    extractScriptPrice(html);
 
   // Quantity: usually in product title
   const qtyInfo = parseQty(name) ?? parseQty(ogDesc);

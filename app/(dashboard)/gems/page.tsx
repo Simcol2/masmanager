@@ -488,7 +488,7 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
                 </div>
               )}
               <div style={{ fontSize: "0.72rem", color: "#6B7280" }}>
-                Enter the number of pieces covered by this purchase. Example: a $13 bag with 200 pieces should be entered as 13 dollars, 200 quantity, and unit pcs.
+                Example: a $13 bag of 200 pieces = Price 13, Quantity 200, Unit pcs.
               </div>
               {/* Qty on hand */}
               {field("Quantity on Hand",
