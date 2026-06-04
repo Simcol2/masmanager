@@ -31,12 +31,15 @@ export async function getSeasonPieceSteps(seasonId: string): Promise<SeasonPiece
   const q = query(
     collection(db, "seasonPieceSteps"),
     where("seasonId", "==", seasonId),
-    orderBy("costumeType"),
-    orderBy("pieceName"),
-    orderBy("sortOrder"),
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => fromFirestore({ id: d.id, ...d.data() }) as SeasonPieceStep);
+  const results = snap.docs.map((d) => fromFirestore({ id: d.id, ...d.data() }) as SeasonPieceStep);
+  results.sort((a, b) => {
+    if (a.costumeType !== b.costumeType) return a.costumeType.localeCompare(b.costumeType);
+    if (a.pieceName !== b.pieceName) return a.pieceName.localeCompare(b.pieceName);
+    return a.sortOrder - b.sortOrder;
+  });
+  return results;
 }
 
 // Replace all steps for a (seasonId, costumeType, pieceName) combination

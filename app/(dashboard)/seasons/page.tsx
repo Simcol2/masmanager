@@ -375,48 +375,53 @@ function CostumeDetailDialog({
 
           {/* ── Build Steps ── */}
           <section>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
-              <h3 style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", margin: 0 }}>
-                Build Steps
-              </h3>
-              <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>tap a piece to configure</span>
-            </div>
+            <h3 style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF", margin: "0 0 0.75rem" }}>
+              Build Steps
+            </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {defaultPieces.map(p => {
                 const stepsForPiece = pieceSteps.filter(s => s.pieceName === p.piece).sort((a, b) => a.sortOrder - b.sortOrder);
-                const isConfiguring = configPiece === p.piece;
+                const hasSteps = stepsForPiece.length > 0;
+                const isEditing = configPiece === p.piece;
+
                 return (
-                  <div key={p.piece + (p.notes ?? "")} style={{ border: "1px solid #E5E7EB", borderRadius: "0.75rem", overflow: "hidden" }}>
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0.875rem", cursor: "pointer", background: isConfiguring ? "#F9FAFB" : "#FFFFFF" }}
-                      onClick={() => isConfiguring ? setConfigPiece(null) : openStepConfig(p.piece)}
-                    >
-                      <ListChecks style={{ width: "0.9rem", height: "0.9rem", color: stepsForPiece.length > 0 ? "#1A73E8" : "#D1D5DB", flexShrink: 0 }} />
+                  <div key={p.piece + (p.notes ?? "")} style={{ border: `1px solid ${isEditing ? "#1A73E8" : "#E5E7EB"}`, borderRadius: "0.75rem", overflow: "hidden", transition: "border-color 0.15s" }}>
+                    {/* Row: piece name + step chips + action button */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", padding: "0.75rem 0.875rem", background: "#FFFFFF" }}>
+                      <ListChecks style={{ width: "0.9rem", height: "0.9rem", color: hasSteps ? "#1A73E8" : "#D1D5DB", flexShrink: 0, marginTop: "0.15rem" }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#1E2029", margin: 0 }}>
                           {p.piece}{p.notes ? <span style={{ fontSize: "0.75rem", color: "#9CA3AF", fontWeight: 400 }}> ({p.notes})</span> : null}
                         </p>
-                        {stepsForPiece.length > 0 ? (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.25rem" }}>
+                        {hasSteps ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.3rem" }}>
                             {stepsForPiece.map(s => (
-                              <span key={s.id} style={{ fontSize: "0.65rem", fontWeight: 600, padding: "0.1rem 0.4rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", color: "#1A73E8" }}>
+                              <span key={s.id} style={{ fontSize: "0.65rem", fontWeight: 600, padding: "0.15rem 0.45rem", borderRadius: "999px", background: "rgba(26,115,232,0.08)", color: "#1A73E8" }}>
                                 {s.stepName}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "0.15rem 0 0" }}>No steps configured</p>
+                          <p style={{ fontSize: "0.72rem", color: "#9CA3AF", margin: "0.2rem 0 0" }}>No steps set</p>
                         )}
                       </div>
-                      {isConfiguring ? <ChevronUp style={{ width: "0.875rem", height: "0.875rem", color: "#9CA3AF", flexShrink: 0 }} /> : <ChevronDown style={{ width: "0.875rem", height: "0.875rem", color: "#9CA3AF", flexShrink: 0 }} />}
+                      <button
+                        onClick={() => isEditing ? setConfigPiece(null) : openStepConfig(p.piece)}
+                        style={{
+                          padding: "0.3rem 0.625rem", fontSize: "0.72rem", fontWeight: 600, flexShrink: 0,
+                          border: `1.5px solid ${isEditing ? "#E5E7EB" : hasSteps ? "rgba(26,115,232,0.3)" : accent}`,
+                          borderRadius: "0.5rem", cursor: "pointer",
+                          background: isEditing ? "#F3F4F6" : hasSteps ? "rgba(26,115,232,0.06)" : `${accent}12`,
+                          color: isEditing ? "#6B7280" : hasSteps ? "#1A73E8" : accent,
+                        }}>
+                        {isEditing ? "Cancel" : hasSteps ? "Adjust" : "Set up"}
+                      </button>
                     </div>
 
-                    {isConfiguring && (
-                      <div style={{ padding: "0.875rem", borderTop: "1px solid #F3F4F6", background: "#FAFAFA", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                        <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151", margin: 0 }}>
-                          Select build steps for {p.piece}{p.notes ? ` (${p.notes})` : ""}
-                        </p>
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
+                    {/* Step picker — only visible while editing */}
+                    {isEditing && (
+                      <div style={{ padding: "0.875rem", borderTop: "1px solid #EFF6FF", background: "#F9FAFB", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.375rem" }}>
                           {ALL_PRODUCTION_STEPS.map(step => {
                             const checked = selectedStepNames.includes(step);
                             return (
@@ -456,7 +461,7 @@ function CostumeDetailDialog({
                             disabled={savingSteps}
                             style={{ padding: "0.45rem 0.875rem", fontSize: "0.8rem", border: "none", borderRadius: "0.5rem", background: accent, color: "#fff", cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.3rem", opacity: savingSteps ? 0.7 : 1 }}>
                             {savingSteps ? <Loader2 style={{ width: "0.75rem", height: "0.75rem" }} className="animate-spin" /> : <Check style={{ width: "0.75rem", height: "0.75rem" }} />}
-                            Save steps
+                            Save
                           </button>
                         </div>
                       </div>
