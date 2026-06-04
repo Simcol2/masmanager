@@ -415,3 +415,29 @@ When displaying or calculating production needs:
 totalNeeded = registrations.filter(r => r.seasonId === activeSeasonId && r.costumeType === costumeType).length
             × appliqueUsage.quantityPerCostume
 ```
+
+---
+
+## Planned: Camp Display Board (`/display`)
+
+A read-only, no-login full-screen page designed to run on a tablet mounted at the mas camp. Volunteers check it when they arrive to see what piece to work on next.
+
+### Concept
+- Shows live production status for all pieces (remaining count, progress bar, urgency color)
+- Auto-refreshes every 60 seconds
+- Wake Lock API keeps screen on (`navigator.wakeLock.request("screen")`)
+- No navigation, no buttons, no auth required — public URL
+- Designed to be readable from across the room (large numbers, high contrast)
+
+### Distribution plan
+- Each section leader purchases a license and enters their section info the same way the current band does (self-serve onboarding)
+- Pre-configured Android tablet (Fully Kiosk Browser locked to `/display`) sold as optional hardware bundle
+- The tablet is a convenience — any screen pointed at the URL works
+
+### Multi-tenant requirement (prerequisite)
+Before the display board can be sold to other bands, MasManager needs a band/organization layer:
+- Every Firestore collection scoped to a `bandId`
+- Login creates or joins a band workspace
+- Per-band subdomain or workspace slug in the URL
+
+Do not start the display board feature until multi-tenancy is in place.

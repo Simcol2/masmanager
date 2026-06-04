@@ -912,10 +912,11 @@ function IngredientPicker({
 
   function confirmAddSupply(supply: GemSupply) {
     const isLinear = LINEAR_UNITS.has(supply.costUnit);
+    const isFabric = supply.category === "fabric";
     const unitCost = supply.costQty > 0 ? +(supply.costAmount / supply.costQty).toFixed(6) : 0;
     const lenIn = parseFloat(pendingLength) || 0;
     const qty = isLinear && lenIn > 0 ? inchesToUnit(lenIn, supply.costUnit) : pendingQty;
-    const w = parseFloat(pendingWidth) || undefined;
+    const w = isFabric ? (parseFloat(pendingWidth) || undefined) : undefined;
     const l = parseFloat(pendingLength) || undefined;
     onAdd({ type: "supply", gemSupplyId: supply.id, gemSupplyName: supply.name, gemSupplyItemNumber: supply.itemNumber, quantity: qty, unitCost, lineCost: +(unitCost * qty).toFixed(4), dimWidth: w, dimLength: l });
     setPendingId(null); setPendingQty(1); setPendingWidth(""); setPendingLength("");
@@ -963,6 +964,7 @@ function IngredientPicker({
               const inRecipe = inSupplies.has(supply.id);
               const isPending = pendingId === supply.id;
               const isLinear = LINEAR_UNITS.has(supply.costUnit);
+              const isFabric = supply.category === "fabric";
               const unitCost = supply.costQty > 0 ? +(supply.costAmount / supply.costQty).toFixed(6) : 0;
               const lenIn = parseFloat(pendingLength) || 0;
               const computedQty = isLinear && lenIn > 0 ? inchesToUnit(lenIn, supply.costUnit) : pendingQty;
@@ -980,8 +982,12 @@ function IngredientPicker({
                       {isLinear ? (
                         <>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                            <input type="number" min="0" step="0.25" value={pendingWidth} onChange={e => setPendingWidth(e.target.value)} placeholder='W"' style={{ width: "3rem", padding: "0.2rem 0.35rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.75rem", color: "#1E2029", background: "#fff", outline: "none", textAlign: "center" }} />
-                            <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>×</span>
+                            {isFabric && (
+                              <>
+                                <input type="number" min="0" step="0.25" value={pendingWidth} onChange={e => setPendingWidth(e.target.value)} placeholder='W"' style={{ width: "3rem", padding: "0.2rem 0.35rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.75rem", color: "#1E2029", background: "#fff", outline: "none", textAlign: "center" }} />
+                                <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>×</span>
+                              </>
+                            )}
                             <input type="number" min="0" step="0.25" value={pendingLength} onChange={e => setPendingLength(e.target.value)} placeholder='L"' autoFocus style={{ width: "3rem", padding: "0.2rem 0.35rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.75rem", color: "#1E2029", background: "#fff", outline: "none", textAlign: "center" }} />
                             <span style={{ fontSize: "0.66rem", color: "#9CA3AF" }}>in</span>
                           </div>

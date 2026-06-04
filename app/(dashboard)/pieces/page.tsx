@@ -669,6 +669,7 @@ function PieceBuilderDialog({
                           <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#059669", background: "rgba(5,150,105,0.1)", padding: "0.15rem 0.5rem", borderRadius: "999px", whiteSpace: "nowrap" }}>In recipe</span>
                         ) : isPending ? (() => {
                           const isLinear = LINEAR_UNITS.has(supply.costUnit);
+                          const isFabric = supply.category === "fabric";
                           const lenIn = parseFloat(pendingLength) || 0;
                           const computedQty = isLinear && lenIn > 0 ? inchesToUnit(lenIn, supply.costUnit) : pendingQty;
                           const canConfirm = isLinear ? lenIn > 0 : pendingQty > 0;
@@ -677,11 +678,15 @@ function PieceBuilderDialog({
                               {isLinear ? (
                                 <>
                                   <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                                    <input type="number" min="0" step="0.25" value={pendingWidth}
-                                      onChange={e => setPendingWidth(e.target.value)}
-                                      placeholder='W"'
-                                      style={{ width: "3.5rem", padding: "0.25rem 0.4rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.78rem", color: "#1E2029", background: "#FFFFFF", outline: "none", textAlign: "center" }} />
-                                    <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>×</span>
+                                    {isFabric && (
+                                      <>
+                                        <input type="number" min="0" step="0.25" value={pendingWidth}
+                                          onChange={e => setPendingWidth(e.target.value)}
+                                          placeholder='W"'
+                                          style={{ width: "3.5rem", padding: "0.25rem 0.4rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.78rem", color: "#1E2029", background: "#FFFFFF", outline: "none", textAlign: "center" }} />
+                                        <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>×</span>
+                                      </>
+                                    )}
                                     <input type="number" min="0" step="0.25" value={pendingLength}
                                       onChange={e => setPendingLength(e.target.value)}
                                       placeholder='L"'
@@ -705,7 +710,7 @@ function PieceBuilderDialog({
                                 <button
                                   disabled={!canConfirm}
                                   onClick={() => {
-                                    const w = parseFloat(pendingWidth) || undefined;
+                                    const w = isFabric ? (parseFloat(pendingWidth) || undefined) : undefined;
                                     const l = parseFloat(pendingLength) || undefined;
                                     addSupply(supply, isLinear ? computedQty : pendingQty, w, l);
                                   }}
