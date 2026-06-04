@@ -4,16 +4,45 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check,
-  Sparkles, Package, ChevronDown, ChevronUp, Gem, Search, Hammer,
+  Sparkles, Package, ChevronDown, ChevronUp, Gem, Search, Hammer, Shirt, Library,
 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getAppliques, createApplique, updateApplique, deleteApplique, getAppliqueUsagesByApplique, upsertAppliqueUsage, deleteAppliqueUsage } from "@/lib/services/appliques";
 import { getMasterPieces } from "@/lib/services/pieces";
 import { getGemSupplies } from "@/lib/services/gems";
+import { getPieceIngredients, savePieceIngredients } from "@/lib/services/pieceIngredients";
+import { getBodywearRecipes, saveBodywearRecipe } from "@/lib/services/bodywearRecipes";
 import { uploadFile, deleteFileByURL } from "@/lib/services/storage";
-import type { Applique, AppliqueUsage, AppliqueIngredient, MasterPiece, CostumeType, GemSupply } from "@/types";
+import type { Applique, AppliqueUsage, AppliqueIngredient, MasterPiece, CostumeType, GemSupply, BodywearRecipe } from "@/types";
 import { CostumeTypeLabels } from "@/types";
+
+// ── Shared builder helpers ────────────────────────────────────────────────────
+type BuilderIngredient = {
+  type: "supply" | "applique";
+  gemSupplyId?: string; gemSupplyName?: string; gemSupplyItemNumber?: string;
+  appliqueId?: string; appliqueName?: string; appliqueItemNumber?: string;
+  quantity: number; unitCost: number; lineCost: number;
+  dimWidth?: number; dimLength?: number;
+};
+const LINEAR_UNITS = new Set(["yard", "metre", "feet"]);
+function inchesToUnit(inches: number, unit: string): number {
+  if (unit === "yard")  return +(inches / 36).toFixed(4);
+  if (unit === "metre") return +(inches / 39.3701).toFixed(4);
+  if (unit === "feet")  return +(inches / 12).toFixed(4);
+  return inches;
+}
+function unitLabel(unit: string) {
+  return unit === "yard" ? "yd" : unit === "metre" ? "m" : unit === "feet" ? "ft" : unit;
+}
+const BODYWEAR_TYPES = [
+  "Girls Shorts", "Boys Shorts", "Boys Tank Top", "Boys T-Shirt", "Girls Halter Top",
+];
+const SUPPLY_CAT_LABELS: Record<string, string> = {
+  rhinestone: "Rhinestone", gem: "Gem", trim: "Trim", fabric: "Fabric",
+  feather: "Feather", wire: "Wire", elastic: "Elastic", chain: "Chain",
+  htv: "HTV", hardware: "Hardware", glue: "Glue", paint: "Paint", other: "Other",
+};
 
 // ── Shared input style ────────────────────────────────────────────────────────
 const inputStyle: React.CSSProperties = {
@@ -850,19 +879,387 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique, m
   );
 }
 
+// ── Shared ingredient picker (used by both piece + bodywear builders) ─────────
+function IngredientPicker({
+  gemSupplies, appliques,
+  ingredients, onAdd, onUpdateQty, onRemove,
+}: {
+  gemSupplies: GemSupply[]; appliques: Applique[];
+  ingredients: BuilderIngredient[];
+  onAdd: (ing: BuilderIngredient) => void;
+  onUpdateQty: (idx: number, qty: number) => void;
+  onRemove: (idx: number) => void;
+}) {
+  const [tab, setTab] = useState<"supplies" | "appliques">("supplies");
+  const [catFilter, setCatFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [pendingQty, setPendingQty] = useState(1);
+  const [pendingWidth, setPendingWidth] = useState("");
+  const [pendingLength, setPendingLength] = useState("");
+
+  const inSupplies = new Set(ingredients.filter(i => i.type === "supply").map(i => i.gemSupplyId!));
+  const inAppliques = new Set(ingredients.filter(i => i.type === "applique").map(i => i.appliqueId!));
+  const totalCost = ingredients.reduce((s, i) => s + i.lineCost, 0);
+
+  const filteredSupplies = gemSupplies.filter(g => {
+    if (g.category === "bodywear") return false;
+    if (catFilter !== "all" && g.category !== catFilter) return false;
+    if (search) { const q = search.toLowerCase(); return g.name.toLowerCase().includes(q) || g.itemNumber.toLowerCase().includes(q); }
+    return true;
+  });
+  const filteredAppliques = appliques.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.itemNumber.toLowerCase().includes(search.toLowerCase()));
+
+  function confirmAddSupply(supply: GemSupply) {
+    const isLinear = LINEAR_UNITS.has(supply.costUnit);
+    const unitCost = supply.costQty > 0 ? +(supply.costAmount / supply.costQty).toFixed(6) : 0;
+    const lenIn = parseFloat(pendingLength) || 0;
+    const qty = isLinear && lenIn > 0 ? inchesToUnit(lenIn, supply.costUnit) : pendingQty;
+    const w = parseFloat(pendingWidth) || undefined;
+    const l = parseFloat(pendingLength) || undefined;
+    onAdd({ type: "supply", gemSupplyId: supply.id, gemSupplyName: supply.name, gemSupplyItemNumber: supply.itemNumber, quantity: qty, unitCost, lineCost: +(unitCost * qty).toFixed(4), dimWidth: w, dimLength: l });
+    setPendingId(null); setPendingQty(1); setPendingWidth(""); setPendingLength("");
+  }
+
+  function confirmAddApplique(applique: Applique) {
+    onAdd({ type: "applique", appliqueId: applique.id, appliqueName: applique.name, appliqueItemNumber: applique.itemNumber, quantity: pendingQty, unitCost: applique.totalCost, lineCost: +(applique.totalCost * pendingQty).toFixed(4) });
+    setPendingId(null); setPendingQty(1);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <style>{`.ip-layout{display:flex;flex-direction:column;flex:1;overflow:hidden}@media(min-width:700px){.ip-layout{flex-direction:row}}.ip-picker{display:flex;flex-direction:column;overflow:hidden;border-bottom:1px solid #F3F4F6}@media(min-width:700px){.ip-picker{width:55%;border-bottom:none;border-right:1px solid #F3F4F6}}.ip-recipe{display:flex;flex-direction:column;overflow:hidden}@media(min-width:700px){.ip-recipe{flex:1}}.ip-list{overflow-y:auto;flex:1}`}</style>
+      <div className="ip-layout">
+        {/* Picker */}
+        <div className="ip-picker">
+          <div style={{ display: "flex", borderBottom: "1px solid #F3F4F6", flexShrink: 0 }}>
+            {(["supplies", "appliques"] as const).map(t => (
+              <button key={t} onClick={() => { setTab(t); setSearch(""); setPendingId(null); }}
+                style={{ flex: 1, padding: "0.6rem", fontSize: "0.8rem", fontWeight: 700, border: "none", cursor: "pointer", background: tab === t ? "#fff" : "#F9FAFB", color: tab === t ? "#1A73E8" : "#6B7280", borderBottom: tab === t ? "2px solid #1A73E8" : "2px solid transparent" }}>
+                {t === "supplies" ? "Supplies" : "Appliques"}
+              </button>
+            ))}
+          </div>
+          <div style={{ padding: "0.6rem 0.75rem", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: "0.5rem", padding: "0.3rem 0.6rem" }}>
+              <Search style={{ width: "0.8rem", height: "0.8rem", color: "#9CA3AF", flexShrink: 0 }} />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder={tab === "supplies" ? "Search supplies..." : "Search appliques..."} style={{ flex: 1, border: "none", background: "none", outline: "none", fontSize: "0.8rem", color: "#1E2029" }} />
+              {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: 0 }}><X style={{ width: "0.7rem", height: "0.7rem" }} /></button>}
+            </div>
+            {tab === "supplies" && (
+              <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", marginTop: "0.4rem" }}>
+                {["all", ...Object.keys(SUPPLY_CAT_LABELS).filter(k => gemSupplies.some(g => g.category === k && g.category !== "bodywear"))].map(k => (
+                  <button key={k} onClick={() => setCatFilter(k)}
+                    style={{ padding: "0.12rem 0.5rem", borderRadius: "999px", fontSize: "0.66rem", fontWeight: 600, border: "none", cursor: "pointer", background: catFilter === k ? "#1A73E8" : "#F3F4F6", color: catFilter === k ? "#fff" : "#6B7280" }}>
+                    {k === "all" ? "All" : SUPPLY_CAT_LABELS[k] ?? k}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="ip-list" style={{ padding: "0.25rem 0" }}>
+            {tab === "supplies" && filteredSupplies.map(supply => {
+              const inRecipe = inSupplies.has(supply.id);
+              const isPending = pendingId === supply.id;
+              const isLinear = LINEAR_UNITS.has(supply.costUnit);
+              const unitCost = supply.costQty > 0 ? +(supply.costAmount / supply.costQty).toFixed(6) : 0;
+              const lenIn = parseFloat(pendingLength) || 0;
+              const computedQty = isLinear && lenIn > 0 ? inchesToUnit(lenIn, supply.costUnit) : pendingQty;
+              const canConfirm = isPending && (isLinear ? lenIn > 0 : pendingQty > 0);
+              return (
+                <div key={supply.id} style={{ padding: "0.45rem 0.75rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #F9FAFB", background: inRecipe ? "rgba(5,150,105,0.03)" : "transparent" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1E2029", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{supply.name}</p>
+                    <p style={{ fontSize: "0.66rem", color: "#9CA3AF", margin: 0 }}>{supply.itemNumber} · ${unitCost.toFixed(4)}/{unitLabel(supply.costUnit)}</p>
+                  </div>
+                  {inRecipe && !isPending ? (
+                    <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "#059669", background: "rgba(5,150,105,0.1)", padding: "0.12rem 0.45rem", borderRadius: "999px" }}>In recipe</span>
+                  ) : isPending ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", alignItems: "flex-end" }}>
+                      {isLinear ? (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                            <input type="number" min="0" step="0.25" value={pendingWidth} onChange={e => setPendingWidth(e.target.value)} placeholder='W"' style={{ width: "3rem", padding: "0.2rem 0.35rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.75rem", color: "#1E2029", background: "#fff", outline: "none", textAlign: "center" }} />
+                            <span style={{ fontSize: "0.7rem", color: "#9CA3AF" }}>×</span>
+                            <input type="number" min="0" step="0.25" value={pendingLength} onChange={e => setPendingLength(e.target.value)} placeholder='L"' autoFocus style={{ width: "3rem", padding: "0.2rem 0.35rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.75rem", color: "#1E2029", background: "#fff", outline: "none", textAlign: "center" }} />
+                            <span style={{ fontSize: "0.66rem", color: "#9CA3AF" }}>in</span>
+                          </div>
+                          {lenIn > 0 && <span style={{ fontSize: "0.66rem", color: "#1A73E8", fontWeight: 600 }}>= {computedQty.toFixed(3)} {unitLabel(supply.costUnit)} · ${(unitCost * computedQty).toFixed(2)}</span>}
+                        </>
+                      ) : (
+                        <input type="number" min="0.001" step="1" value={pendingQty} onChange={e => setPendingQty(Math.max(0.001, parseFloat(e.target.value) || 1))} autoFocus style={{ width: "3.5rem", padding: "0.2rem 0.35rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.8rem", color: "#1E2029", background: "#fff", outline: "none" }} />
+                      )}
+                      <div style={{ display: "flex", gap: "0.25rem" }}>
+                        <button onClick={() => confirmAddSupply(supply)} disabled={!canConfirm}
+                          style={{ padding: "0.25rem 0.45rem", borderRadius: "0.4rem", border: "none", background: canConfirm ? "#1A73E8" : "#E5E7EB", color: canConfirm ? "#fff" : "#9CA3AF", cursor: canConfirm ? "pointer" : "not-allowed", display: "flex", alignItems: "center" }}>
+                          <Check style={{ width: "0.72rem", height: "0.72rem" }} />
+                        </button>
+                        <button onClick={() => { setPendingId(null); setPendingWidth(""); setPendingLength(""); setPendingQty(1); }}
+                          style={{ padding: "0.25rem", borderRadius: "0.4rem", border: "1px solid #E5E7EB", background: "#fff", cursor: "pointer", color: "#9CA3AF" }}>
+                          <X style={{ width: "0.68rem", height: "0.68rem" }} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setPendingId(supply.id); setPendingQty(1); setPendingWidth(""); setPendingLength(""); }}
+                      style={{ padding: "0.22rem 0.55rem", borderRadius: "0.4rem", border: "1.5px solid #E5E7EB", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "0.72rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                      <Plus style={{ width: "0.68rem", height: "0.68rem" }} /> Add
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {tab === "appliques" && filteredAppliques.map(applique => {
+              const inRecipe = inAppliques.has(applique.id);
+              const isPending = pendingId === applique.id;
+              return (
+                <div key={applique.id} style={{ padding: "0.45rem 0.75rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #F9FAFB", background: inRecipe ? "rgba(5,150,105,0.03)" : "transparent" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1E2029", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{applique.name}</p>
+                    <p style={{ fontSize: "0.66rem", color: "#9CA3AF", margin: 0 }}>{applique.itemNumber} · ${applique.totalCost.toFixed(2)} total</p>
+                  </div>
+                  {inRecipe && !isPending ? (
+                    <span style={{ fontSize: "0.66rem", fontWeight: 700, color: "#059669", background: "rgba(5,150,105,0.1)", padding: "0.12rem 0.45rem", borderRadius: "999px" }}>In recipe</span>
+                  ) : isPending ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <input type="number" min="1" step="1" value={pendingQty} onChange={e => setPendingQty(Math.max(1, parseInt(e.target.value) || 1))} autoFocus style={{ width: "3.5rem", padding: "0.2rem 0.35rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.8rem", color: "#1E2029", background: "#fff", outline: "none" }} />
+                      <button onClick={() => confirmAddApplique(applique)}
+                        style={{ padding: "0.25rem 0.45rem", borderRadius: "0.4rem", border: "none", background: "#1A73E8", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center" }}>
+                        <Check style={{ width: "0.72rem", height: "0.72rem" }} />
+                      </button>
+                      <button onClick={() => setPendingId(null)} style={{ padding: "0.25rem", borderRadius: "0.4rem", border: "1px solid #E5E7EB", background: "#fff", cursor: "pointer", color: "#9CA3AF" }}>
+                        <X style={{ width: "0.68rem", height: "0.68rem" }} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => { setPendingId(applique.id); setPendingQty(1); }}
+                      style={{ padding: "0.22rem 0.55rem", borderRadius: "0.4rem", border: "1.5px solid #E5E7EB", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "0.72rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                      <Plus style={{ width: "0.68rem", height: "0.68rem" }} /> Add
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {tab === "supplies" && filteredSupplies.length === 0 && <p style={{ textAlign: "center", color: "#9CA3AF", fontSize: "0.8rem", padding: "2rem 1rem" }}>No supplies match</p>}
+            {tab === "appliques" && filteredAppliques.length === 0 && <p style={{ textAlign: "center", color: "#9CA3AF", fontSize: "0.8rem", padding: "2rem 1rem" }}>No appliques yet</p>}
+          </div>
+        </div>
+
+        {/* Recipe */}
+        <div className="ip-recipe">
+          <div style={{ padding: "0.5rem 0.875rem", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0, background: "#FAFAFA" }}>
+            <span style={{ fontSize: "0.7rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280", flex: 1 }}>Recipe ({ingredients.length})</span>
+            {totalCost > 0 && <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#059669" }}>${totalCost.toFixed(2)}</span>}
+          </div>
+          <div style={{ overflowY: "auto", flex: 1, padding: "0.25rem 0" }}>
+            {ingredients.length === 0 && <p style={{ textAlign: "center", color: "#9CA3AF", fontSize: "0.8rem", padding: "2rem 1rem" }}>Add supplies or appliques from the left</p>}
+            {ingredients.map((ing, idx) => (
+              <div key={idx} style={{ padding: "0.45rem 0.875rem", display: "flex", alignItems: "center", gap: "0.5rem", borderBottom: "1px solid #F9FAFB" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: "0.6rem", fontWeight: 700, padding: "0.08rem 0.35rem", borderRadius: "999px", background: ing.type === "supply" ? "rgba(26,115,232,0.08)" : "rgba(255,0,110,0.08)", color: ing.type === "supply" ? "#1A73E8" : "#FF006E" }}>{ing.type === "supply" ? "Supply" : "Applique"}</span>
+                  <p style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1E2029", margin: "0.1rem 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ing.gemSupplyName ?? ing.appliqueName}</p>
+                  {ing.dimLength ? (
+                    <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: 0 }}>{ing.dimWidth ? `${ing.dimWidth}" × ` : ""}{ing.dimLength}" = {ing.quantity.toFixed(3)} units</p>
+                  ) : (
+                    <p style={{ fontSize: "0.65rem", color: "#9CA3AF", margin: 0 }}>${ing.unitCost.toFixed(4)}/ea</p>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
+                  <input type="number" min="0.001" step="1" value={ing.quantity} onChange={e => onUpdateQty(idx, parseFloat(e.target.value) || 1)}
+                    style={{ width: "3.25rem", padding: "0.2rem 0.35rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.78rem", color: "#1E2029", background: "#fff", outline: "none", textAlign: "center" }} />
+                  <span style={{ fontSize: "0.72rem", fontWeight: 600, color: "#D97706" }}>${ing.lineCost.toFixed(2)}</span>
+                  <button onClick={() => onRemove(idx)} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", padding: "0.1rem" }}>
+                    <X style={{ width: "0.72rem", height: "0.72rem" }} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Costume Piece Builder Dialog ───────────────────────────────────────────────
+function CostumePieceBuilderDialog({ piece, open, onClose, gemSupplies, appliques }: {
+  piece: MasterPiece; open: boolean; onClose: () => void;
+  gemSupplies: GemSupply[]; appliques: Applique[];
+}) {
+  const [ingredients, setIngredients] = useState<BuilderIngredient[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const totalCost = ingredients.reduce((s, i) => s + i.lineCost, 0);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    getPieceIngredients(piece.id).then(existing => {
+      setIngredients(existing.map(i => ({ type: i.type, gemSupplyId: i.gemSupplyId, gemSupplyName: i.gemSupplyName, gemSupplyItemNumber: i.gemSupplyItemNumber, appliqueId: i.appliqueId, appliqueName: i.appliqueName, appliqueItemNumber: i.appliqueItemNumber, quantity: i.quantity, unitCost: i.unitCost, lineCost: i.lineCost, dimWidth: i.dimWidth, dimLength: i.dimLength })));
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [open, piece.id]);
+
+  function handleAdd(ing: BuilderIngredient) {
+    setIngredients(prev => {
+      const key = ing.type === "supply" ? ing.gemSupplyId : ing.appliqueId;
+      const idx = prev.findIndex(i => (i.type === ing.type) && (i.type === "supply" ? i.gemSupplyId : i.appliqueId) === key);
+      if (idx >= 0) { const u = [...prev]; u[idx] = ing; return u; }
+      return [...prev, ing];
+    });
+  }
+  function handleUpdateQty(idx: number, qty: number) {
+    if (qty <= 0) return;
+    setIngredients(prev => { const u = [...prev]; u[idx] = { ...u[idx], quantity: qty, lineCost: +(u[idx].unitCost * qty).toFixed(4) }; return u; });
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try { await savePieceIngredients(piece.id, piece.name, ingredients); onClose(); }
+    catch { /* ignore */ } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 51, width: "calc(100% - 1rem)", maxWidth: "52rem", maxHeight: "92vh", overflow: "hidden", background: "#fff", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: 0, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", outline: "none", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "1rem 1.25rem 0.875rem", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "center", gap: "0.75rem", flexShrink: 0 }}>
+          <div style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", background: "linear-gradient(135deg,#FF6B35,#FF006E)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Hammer style={{ width: "1.1rem", height: "1.1rem", color: "#fff" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>Build {piece.name}</h2>
+            <p style={{ fontSize: "0.75rem", color: "#9CA3AF", margin: 0 }}>Add supplies and appliques to define piece cost</p>
+          </div>
+          {totalCost > 0 && <div style={{ textAlign: "right" }}><span style={{ fontSize: "0.68rem", color: "#9CA3AF", display: "block" }}>Total</span><span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#059669" }}>${totalCost.toFixed(2)}</span></div>}
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF" }}><X style={{ width: "1.1rem", height: "1.1rem" }} /></button>
+        </div>
+        {loading ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "0.75rem", color: "#9CA3AF" }}><Loader2 style={{ width: "1.25rem", height: "1.25rem" }} className="animate-spin" /><span>Loading...</span></div> : (
+          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <IngredientPicker gemSupplies={gemSupplies} appliques={appliques} ingredients={ingredients} onAdd={handleAdd} onUpdateQty={handleUpdateQty} onRemove={idx => setIngredients(prev => prev.filter((_, i) => i !== idx))} />
+            <div style={{ padding: "0.875rem", borderTop: "1px solid #F3F4F6", display: "flex", gap: "0.625rem", justifyContent: "flex-end", flexShrink: 0 }}>
+              <button onClick={onClose} style={{ padding: "0.5rem 1rem", borderRadius: "0.625rem", border: "1.5px solid #E5E7EB", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>Cancel</button>
+              <button onClick={handleSave} disabled={saving} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.625rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 700, fontSize: "0.875rem", cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: saving ? 0.7 : 1 }}>
+                {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />} Save
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Bodywear Builder Dialog ────────────────────────────────────────────────────
+function BodywearBuilderDialog({ bodywear, open, onClose, gemSupplies, appliques, existingRecipes }: {
+  bodywear: GemSupply; open: boolean; onClose: () => void;
+  gemSupplies: GemSupply[]; appliques: Applique[];
+  existingRecipes: BodywearRecipe[];
+}) {
+  const [costumeType, setCostumeType] = useState<CostumeType | "">("");
+  const [ingredients, setIngredients] = useState<BuilderIngredient[]>([]);
+  const [saving, setSaving] = useState(false);
+  const totalCost = ingredients.reduce((s, i) => s + i.lineCost, 0);
+
+  // Load recipe when costume type changes
+  useEffect(() => {
+    if (!costumeType) { setIngredients([]); return; }
+    const recipe = existingRecipes.find(r => r.costumeType === costumeType);
+    if (recipe) {
+      setIngredients(recipe.ingredients.map(i => ({ ...i })));
+    } else {
+      setIngredients([]);
+    }
+  }, [costumeType, existingRecipes]);
+
+  useEffect(() => {
+    if (!open) { setCostumeType(""); setIngredients([]); }
+  }, [open]);
+
+  function handleAdd(ing: BuilderIngredient) {
+    setIngredients(prev => {
+      const key = ing.type === "supply" ? ing.gemSupplyId : ing.appliqueId;
+      const idx = prev.findIndex(i => i.type === ing.type && (i.type === "supply" ? i.gemSupplyId : i.appliqueId) === key);
+      if (idx >= 0) { const u = [...prev]; u[idx] = ing; return u; }
+      return [...prev, ing];
+    });
+  }
+  function handleUpdateQty(idx: number, qty: number) {
+    if (qty <= 0) return;
+    setIngredients(prev => { const u = [...prev]; u[idx] = { ...u[idx], quantity: qty, lineCost: +(u[idx].unitCost * qty).toFixed(4) }; return u; });
+  }
+
+  async function handleSave() {
+    if (!costumeType) return;
+    setSaving(true);
+    try { await saveBodywearRecipe(bodywear.id, bodywear.name, costumeType, ingredients); onClose(); }
+    catch { /* ignore */ } finally { setSaving(false); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 51, width: "calc(100% - 1rem)", maxWidth: "52rem", maxHeight: "92vh", overflow: "hidden", background: "#fff", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: 0, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", outline: "none", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "1rem 1.25rem 0.875rem", borderBottom: "1px solid #F3F4F6", display: "flex", alignItems: "flex-start", gap: "0.75rem", flexShrink: 0 }}>
+          <div style={{ width: "2.25rem", height: "2.25rem", borderRadius: "0.625rem", background: "linear-gradient(135deg,#0891B2,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Shirt style={{ width: "1.1rem", height: "1.1rem", color: "#fff" }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#1E2029", margin: 0 }}>Build {bodywear.name}</h2>
+            <p style={{ fontSize: "0.75rem", color: "#9CA3AF", margin: 0 }}>Select costume type, then add appliques and fabric</p>
+            <div style={{ marginTop: "0.5rem" }}>
+              <select value={costumeType} onChange={e => setCostumeType(e.target.value as CostumeType | "")}
+                style={{ padding: "0.35rem 0.75rem", borderRadius: "0.5rem", border: "1.5px solid #E5E7EB", background: "#fff", fontSize: "0.82rem", color: "#1E2029", outline: "none", cursor: "pointer" }}>
+                <option value="">Select costume type...</option>
+                {(Object.entries(CostumeTypeLabels) as [CostumeType, string][]).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+              {existingRecipes.length > 0 && (
+                <span style={{ fontSize: "0.68rem", color: "#9CA3AF", marginLeft: "0.5rem" }}>
+                  Saved: {existingRecipes.map(r => CostumeTypeLabels[r.costumeType]).join(", ")}
+                </span>
+              )}
+            </div>
+          </div>
+          {totalCost > 0 && <div style={{ textAlign: "right", flexShrink: 0 }}><span style={{ fontSize: "0.68rem", color: "#9CA3AF", display: "block" }}>Total</span><span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#059669" }}>${totalCost.toFixed(2)}</span></div>}
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", flexShrink: 0 }}><X style={{ width: "1.1rem", height: "1.1rem" }} /></button>
+        </div>
+        {!costumeType ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: "0.875rem" }}>
+            Select a costume type above to begin
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+            <IngredientPicker gemSupplies={gemSupplies} appliques={appliques} ingredients={ingredients} onAdd={handleAdd} onUpdateQty={handleUpdateQty} onRemove={idx => setIngredients(prev => prev.filter((_, i) => i !== idx))} />
+            <div style={{ padding: "0.875rem", borderTop: "1px solid #F3F4F6", display: "flex", gap: "0.625rem", justifyContent: "flex-end", flexShrink: 0 }}>
+              <button onClick={onClose} style={{ padding: "0.5rem 1rem", borderRadius: "0.625rem", border: "1.5px solid #E5E7EB", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>Cancel</button>
+              <button onClick={handleSave} disabled={saving || !costumeType} style={{ padding: "0.5rem 1.25rem", borderRadius: "0.625rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 700, fontSize: "0.875rem", cursor: saving ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "0.4rem", opacity: (saving || !costumeType) ? 0.7 : 1 }}>
+                {saving ? <Loader2 style={{ width: "0.875rem", height: "0.875rem" }} className="animate-spin" /> : <Check style={{ width: "0.875rem", height: "0.875rem" }} />} Save
+              </button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function AppliquesPage() {
   const [appliques, setAppliques] = useState<Applique[]>([]);
   const [usageMap, setUsageMap] = useState<Record<string, AppliqueUsage[]>>({});
   const [masterPieces, setMasterPieces] = useState<MasterPiece[]>([]);
   const [gemSupplies, setGemSupplies] = useState<GemSupply[]>([]);
+  const [bodywearRecipesMap, setBodywearRecipesMap] = useState<Record<string, BodywearRecipe[]>>({});
   const [loading, setLoading] = useState(true);
+  const [pageTab, setPageTab] = useState<"appliques" | "pieces" | "bodywear">("appliques");
   const [addOpen, setAddOpen] = useState(false);
   const [builderOpen, setBuilderOpen] = useState(false);
   const [builderApplique, setBuilderApplique] = useState<Applique | undefined>();
   const [editApplique, setEditApplique] = useState<Applique | undefined>();
   const [deleteApplique_, setDeleteApplique] = useState<Applique | undefined>();
   const [deleting, setDeleting] = useState(false);
+  const [buildPiece, setBuildPiece] = useState<MasterPiece | undefined>();
+  const [buildBodywear, setBuildBodywear] = useState<GemSupply | undefined>();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -871,51 +1268,69 @@ export default function AppliquesPage() {
       setAppliques(apls); setMasterPieces(pieces); setGemSupplies(gems);
       const usageEntries = await Promise.all(apls.map(async a => [a.id, await getAppliqueUsagesByApplique(a.id)] as [string, AppliqueUsage[]]));
       setUsageMap(Object.fromEntries(usageEntries));
+      const bodywearItems = gems.filter(g => g.category === "bodywear");
+      const recipeEntries = await Promise.all(bodywearItems.map(async bw => [bw.id, await getBodywearRecipes(bw.id)] as [string, BodywearRecipe[]]));
+      setBodywearRecipesMap(Object.fromEntries(recipeEntries));
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
 
+  const bodywearSupplies = gemSupplies.filter(g => g.category === "bodywear");
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <style>{`
+        .appliques-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+        @media(min-width:640px){.appliques-grid{grid-template-columns:repeat(3,1fr)}}
+        @media(min-width:768px){.appliques-grid{grid-template-columns:repeat(4,1fr)}}
+        @media(min-width:1024px){.appliques-grid{grid-template-columns:repeat(5,1fr)}}
+        @media(min-width:1280px){.appliques-grid{grid-template-columns:repeat(6,1fr)}}
+        .pieces-build-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+        @media(min-width:640px){.pieces-build-grid{grid-template-columns:repeat(3,1fr)}}
+        @media(min-width:768px){.pieces-build-grid{grid-template-columns:repeat(4,1fr)}}
+        @media(min-width:1024px){.pieces-build-grid{grid-template-columns:repeat(5,1fr)}}
+        .bodywear-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+        @media(min-width:640px){.bodywear-grid{grid-template-columns:repeat(3,1fr)}}
+        @media(min-width:768px){.bodywear-grid{grid-template-columns:repeat(4,1fr)}}
+      `}</style>
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
         <div>
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#1E2029", margin: 0 }} className="font-display">Applique Library</h1>
+          <h1 style={{ fontSize: "1.75rem", fontWeight: 800, color: "#1E2029", margin: 0 }} className="font-display">Costume Pieces</h1>
           <p style={{ color: "#6B7280", marginTop: "0.2rem", fontSize: "0.9rem" }}>
-            Build appliques from your gem & supply ingredients - cost rolls up automatically
+            Build appliques, costume pieces, and bodywear from your supplies
           </p>
         </div>
-        <div style={{ display: "flex", gap: "0.6rem" }}>
-          <button onClick={() => setAddOpen(true)}
-            style={{ padding: "0.55rem 1rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem" }}>
-            <Plus style={{ width: "0.9rem", height: "0.9rem" }} /> Add Purchased
-          </button>
-          <button onClick={() => { setBuilderApplique(undefined); setBuilderOpen(true); }}
-            style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", boxShadow: "0 2px 8px rgba(255,0,110,0.3)" }}>
-            <Hammer style={{ width: "0.9rem", height: "0.9rem" }} /> Build Applique
-          </button>
-        </div>
+        {pageTab === "appliques" && (
+          <div style={{ display: "flex", gap: "0.6rem" }}>
+            <button onClick={() => setAddOpen(true)}
+              style={{ padding: "0.55rem 1rem", borderRadius: "0.75rem", border: "1.5px solid #E5E7EB", background: "#FFFFFF", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem" }}>
+              <Plus style={{ width: "0.9rem", height: "0.9rem" }} /> Add Purchased
+            </button>
+            <button onClick={() => { setBuilderApplique(undefined); setBuilderOpen(true); }}
+              style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#FFFFFF", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", boxShadow: "0 2px 8px rgba(255,0,110,0.3)" }}>
+              <Hammer style={{ width: "0.9rem", height: "0.9rem" }} /> Build Applique
+            </button>
+          </div>
+        )}
       </motion.div>
 
-      {/* Stats */}
-      {!loading && appliques.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
-          style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
-          {[
-            { label: "Total Appliques", value: appliques.length, color: "#FF006E" },
-            { label: "Assigned to Pieces", value: `${appliques.filter(a => (usageMap[a.id]?.length ?? 0) > 0).length}/${appliques.length}`, color: "#00BCD4" },
-            { label: "Avg Cost to Make", value: appliques.length ? `$${(appliques.reduce((s, a) => s + a.totalCost, 0) / appliques.length).toFixed(2)}` : "$0.00", color: "#FFD60A" },
-          ].map(s => (
-            <div key={s.label} style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-              <p style={{ fontSize: "1.5rem", fontWeight: 800, color: s.color, margin: 0, lineHeight: 1 }}>{s.value}</p>
-              <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: "0.25rem", marginBottom: 0 }}>{s.label}</p>
-            </div>
-          ))}
-        </motion.div>
-      )}
+      {/* Tab strip */}
+      <div style={{ display: "flex", borderBottom: "2px solid #E5E7EB", gap: 0 }}>
+        {([
+          { key: "appliques" as const, label: "Appliques", icon: <Sparkles style={{ width: "0.875rem", height: "0.875rem" }} /> },
+          { key: "pieces" as const, label: "Costume Pieces", icon: <Library style={{ width: "0.875rem", height: "0.875rem" }} /> },
+          { key: "bodywear" as const, label: "Bodywear", icon: <Shirt style={{ width: "0.875rem", height: "0.875rem" }} /> },
+        ]).map(({ key, label, icon }) => (
+          <button key={key} onClick={() => setPageTab(key)}
+            style={{ padding: "0.6rem 1.1rem", fontSize: "0.875rem", fontWeight: 600, border: "none", background: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.35rem", color: pageTab === key ? "#1A73E8" : "#6B7280", borderBottom: pageTab === key ? "2.5px solid #1A73E8" : "2.5px solid transparent", marginBottom: "-2px", transition: "color 0.15s" }}>
+            {icon}{label}
+          </button>
+        ))}
+      </div>
 
       {/* Loading */}
       {loading && (
@@ -924,43 +1339,154 @@ export default function AppliquesPage() {
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && appliques.length === 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-          style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "5rem 1rem", gap: "1rem", textAlign: "center" }}>
-          <div style={{ width: "4rem", height: "4rem", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,0,110,0.07)", border: "1px solid rgba(255,0,110,0.15)" }}>
-            <Sparkles style={{ width: "2rem", height: "2rem", color: "#FF006E", opacity: 0.5 }} />
-          </div>
-          <div>
-            <p style={{ fontWeight: 600, color: "#1E2029", margin: 0 }}>No appliques yet</p>
-            <p style={{ fontSize: "0.875rem", color: "#6B7280", marginTop: "0.25rem", marginBottom: 0 }}>Add gems & supplies first, then build appliques from them</p>
-          </div>
-          <button onClick={() => { setBuilderApplique(undefined); setBuilderOpen(true); }} style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#fff", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <Hammer style={{ width: "0.9rem", height: "0.9rem" }} /> Build Applique
-          </button>
-        </motion.div>
-      )}
-
-      {/* Grid */}
-      {!loading && appliques.length > 0 && (
+      {/* APPLIQUES TAB */}
+      {!loading && pageTab === "appliques" && (
         <>
-          <style>{`.appliques-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}@media(min-width:640px){.appliques-grid{grid-template-columns:repeat(3,1fr)}}@media(min-width:768px){.appliques-grid{grid-template-columns:repeat(4,1fr)}}@media(min-width:1024px){.appliques-grid{grid-template-columns:repeat(5,1fr)}}@media(min-width:1280px){.appliques-grid{grid-template-columns:repeat(6,1fr)}}`}</style>
-          <div className="appliques-grid">
-            {appliques.map((a, i) => (
-              <AppliqueCard key={a.id} applique={a} usages={usageMap[a.id] ?? []} index={i}
-                onEdit={() => { setBuilderApplique(a); setBuilderOpen(true); }} onDelete={() => setDeleteApplique(a)} />
-            ))}
-          </div>
+          {appliques.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem" }}>
+              {[
+                { label: "Total Appliques", value: appliques.length, color: "#FF006E" },
+                { label: "Assigned to Pieces", value: `${appliques.filter(a => (usageMap[a.id]?.length ?? 0) > 0).length}/${appliques.length}`, color: "#00BCD4" },
+                { label: "Avg Cost to Make", value: `$${appliques.length ? (appliques.reduce((s, a) => s + a.totalCost, 0) / appliques.length).toFixed(2) : "0.00"}`, color: "#FFD60A" },
+              ].map(s => (
+                <div key={s.label} style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", padding: "1.25rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <p style={{ fontSize: "1.5rem", fontWeight: 800, color: s.color, margin: 0, lineHeight: 1 }}>{s.value}</p>
+                  <p style={{ fontSize: "0.72rem", color: "#9CA3AF", marginTop: "0.25rem", marginBottom: 0 }}>{s.label}</p>
+                </div>
+              ))}
+            </motion.div>
+          )}
+          {appliques.length === 0 ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "5rem 1rem", gap: "1rem", textAlign: "center" }}>
+              <div style={{ width: "4rem", height: "4rem", borderRadius: "999px", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,0,110,0.07)", border: "1px solid rgba(255,0,110,0.15)" }}>
+                <Sparkles style={{ width: "2rem", height: "2rem", color: "#FF006E", opacity: 0.5 }} />
+              </div>
+              <div>
+                <p style={{ fontWeight: 600, color: "#1E2029", margin: 0 }}>No appliques yet</p>
+                <p style={{ fontSize: "0.875rem", color: "#6B7280", marginTop: "0.25rem", marginBottom: 0 }}>Add gems & supplies first, then build appliques from them</p>
+              </div>
+              <button onClick={() => { setBuilderApplique(undefined); setBuilderOpen(true); }} style={{ padding: "0.55rem 1.25rem", borderRadius: "0.75rem", border: "none", background: "#FF006E", color: "#fff", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                <Hammer style={{ width: "0.9rem", height: "0.9rem" }} /> Build Applique
+              </button>
+            </motion.div>
+          ) : (
+            <div className="appliques-grid">
+              {appliques.map((a, i) => (
+                <AppliqueCard key={a.id} applique={a} usages={usageMap[a.id] ?? []} index={i}
+                  onEdit={() => { setBuilderApplique(a); setBuilderOpen(true); }} onDelete={() => setDeleteApplique(a)} />
+              ))}
+            </div>
+          )}
         </>
       )}
 
-      {/* Visual builder for building appliques from gems */}
+      {/* COSTUME PIECES TAB */}
+      {!loading && pageTab === "pieces" && (
+        <>
+          {masterPieces.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "5rem 1rem", gap: "1rem", textAlign: "center", color: "#9CA3AF" }}>
+              <Library style={{ width: "2.5rem", height: "2.5rem", opacity: 0.4 }} />
+              <div>
+                <p style={{ fontWeight: 600, color: "#1E2029", margin: "0 0 0.25rem" }}>No pieces yet</p>
+                <p style={{ fontSize: "0.875rem", margin: 0 }}>Add master pieces in the Pieces section first</p>
+              </div>
+            </div>
+          ) : (
+            <div className="pieces-build-grid">
+              {masterPieces.map((piece, i) => (
+                <motion.div key={piece.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                  style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                  <div style={{ height: "7rem", background: "#F9FAFB", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                    {piece.photoURL
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={piece.photoURL} alt={piece.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      : <Library style={{ width: "1.75rem", height: "1.75rem", color: "#D1D5DB" }} />}
+                  </div>
+                  <div style={{ padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <div>
+                      <h3 style={{ fontWeight: 600, color: "#1E2029", fontSize: "0.875rem", lineHeight: 1.3, margin: 0 }}>{piece.name}</h3>
+                      <p style={{ fontSize: "0.72rem", color: "#6B7280", margin: "0.1rem 0 0" }}>{piece.sizeGroup}</p>
+                    </div>
+                    <button onClick={() => setBuildPiece(piece)}
+                      style={{ width: "100%", padding: "0.45rem", borderRadius: "0.6rem", border: "none", background: "linear-gradient(135deg,#FF6B35,#FF006E)", color: "#fff", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
+                      <Hammer style={{ width: "0.75rem", height: "0.75rem" }} /> Build Piece
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* BODYWEAR TAB */}
+      {!loading && pageTab === "bodywear" && (
+        <>
+          {bodywearSupplies.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "5rem 1rem", gap: "1rem", textAlign: "center", color: "#9CA3AF" }}>
+              <Shirt style={{ width: "2.5rem", height: "2.5rem", opacity: 0.4 }} />
+              <div>
+                <p style={{ fontWeight: 600, color: "#1E2029", margin: "0 0 0.25rem" }}>No bodywear supplies yet</p>
+                <p style={{ fontSize: "0.875rem", margin: 0 }}>Add bodywear items (shorts, tops, etc.) in Gems &amp; Supplies with the Bodywear category</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bodywear-grid">
+              {bodywearSupplies.map((bw, i) => {
+                const recipes = bodywearRecipesMap[bw.id] ?? [];
+                return (
+                  <motion.div key={bw.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                    style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "1rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                    <div style={{ height: "7rem", background: "#F0F9FF", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      {bw.photoURL
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={bw.photoURL} alt={bw.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <Shirt style={{ width: "2rem", height: "2rem", color: "#0891B2", opacity: 0.5 }} />}
+                    </div>
+                    <div style={{ padding: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      <div>
+                        <p style={{ fontSize: "0.6rem", fontFamily: "monospace", color: "#9CA3AF", margin: 0 }}>{bw.itemNumber}</p>
+                        <h3 style={{ fontWeight: 600, color: "#1E2029", fontSize: "0.875rem", lineHeight: 1.3, margin: 0 }}>{bw.name}</h3>
+                        {recipes.length > 0 && (
+                          <p style={{ fontSize: "0.68rem", color: "#059669", margin: "0.15rem 0 0", fontWeight: 600 }}>
+                            {recipes.length} costume type{recipes.length !== 1 ? "s" : ""} configured
+                          </p>
+                        )}
+                      </div>
+                      <button onClick={() => setBuildBodywear(bw)}
+                        style={{ width: "100%", padding: "0.45rem", borderRadius: "0.6rem", border: "none", background: "linear-gradient(135deg,#0891B2,#8B5CF6)", color: "#fff", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.35rem" }}>
+                        <Shirt style={{ width: "0.75rem", height: "0.75rem" }} /> Build Bodywear
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Applique dialogs */}
       <ApliqueBuilderDialog open={builderOpen} applique={builderApplique}
         onClose={() => { setBuilderOpen(false); setBuilderApplique(undefined); }} onSaved={load}
         gemSupplies={gemSupplies} masterPieces={masterPieces} />
-      {/* Simple form for logging pre-purchased appliques */}
       <AppliqueFormDialog open={addOpen} onClose={() => setAddOpen(false)} onSaved={load} masterPieces={masterPieces} gemSupplies={gemSupplies} />
       <AppliqueFormDialog applique={editApplique} open={!!editApplique} onClose={() => setEditApplique(undefined)} onSaved={load} masterPieces={masterPieces} gemSupplies={gemSupplies} />
+
+      {/* Piece builder */}
+      {buildPiece && (
+        <CostumePieceBuilderDialog piece={buildPiece} open={!!buildPiece} onClose={() => setBuildPiece(undefined)} gemSupplies={gemSupplies} appliques={appliques} />
+      )}
+
+      {/* Bodywear builder */}
+      {buildBodywear && (
+        <BodywearBuilderDialog bodywear={buildBodywear} open={!!buildBodywear}
+          onClose={() => { setBuildBodywear(undefined); load(); }}
+          gemSupplies={gemSupplies} appliques={appliques}
+          existingRecipes={bodywearRecipesMap[buildBodywear.id] ?? []} />
+      )}
 
       {/* Delete confirm */}
       <Dialog open={!!deleteApplique_} onOpenChange={v => !v && setDeleteApplique(undefined)}>

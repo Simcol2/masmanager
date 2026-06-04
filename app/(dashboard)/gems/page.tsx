@@ -27,6 +27,7 @@ const CATEGORY_LABELS: Record<SupplyCategory, string> = {
   tool:              "Tool",
   hardware:          "Hardware",
   paint:             "Paint / Finish",
+  bodywear:          "Bodywear",
   other:             "Other",
 };
 
@@ -48,6 +49,7 @@ const CATEGORY_BG: Record<SupplyCategory, string> = {
   tool:              "#F3F4F6",
   hardware:          "#F3F4F6",
   paint:             "#FFF7ED",
+  bodywear:          "#E0F2FE",
   other:             "#F3F4F6",
 };
 const CATEGORY_COLOR: Record<SupplyCategory, string> = {
@@ -67,6 +69,7 @@ const CATEGORY_COLOR: Record<SupplyCategory, string> = {
   tool:              "#374151",
   hardware:          "#374151",
   paint:             "#9A3412",
+  bodywear:          "#0891B2",
   other:             "#374151",
 };
 

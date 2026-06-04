@@ -280,6 +280,7 @@ export const SupplyCategory = z.enum([
   "tool",
   "hardware",
   "paint",
+  "bodywear",
   "other",
 ]);
 
@@ -386,6 +387,36 @@ export const PieceIngredientSchema = z.object({
   updatedAt: z.date(),
 });
 export type PieceIngredient = z.infer<typeof PieceIngredientSchema>;
+
+// ─── Bodywear Recipes ─────────────────────────────────────────────────────────
+// A bodywear item (supply category "bodywear") decorated with appliques and
+// fabric to determine its full cost for a specific costume type.
+export const BodywearIngredientSchema = z.object({
+  type: z.enum(["supply", "applique"]),
+  gemSupplyId: z.string().optional(),
+  gemSupplyName: z.string().optional(),
+  gemSupplyItemNumber: z.string().optional(),
+  appliqueId: z.string().optional(),
+  appliqueName: z.string().optional(),
+  appliqueItemNumber: z.string().optional(),
+  quantity: z.number().min(0).default(1),
+  unitCost: z.number().min(0).default(0),
+  lineCost: z.number().min(0).default(0),
+  dimWidth: z.number().optional(),
+  dimLength: z.number().optional(),
+});
+export const BodywearRecipeSchema = z.object({
+  id: z.string(),
+  bodywearSupplyId: z.string(),
+  bodywearName: z.string(),
+  costumeType: CostumeType,
+  ingredients: z.array(BodywearIngredientSchema).default([]),
+  totalCost: z.number().min(0).default(0),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type BodywearIngredient = z.infer<typeof BodywearIngredientSchema>;
+export type BodywearRecipe = z.infer<typeof BodywearRecipeSchema>;
 
 // ─── Costume Recipe ───────────────────────────────────────────────────────────
 export const CostumeMaterialSchema = z.object({

@@ -12,7 +12,7 @@ const mobileNavItems = [
   { href: "/seasons",       label: "Costumes",  icon: CalendarDays,    color: "#FF006E", roles: ["admin","registrar","production"] },
   { href: "/registrations", label: "Register",  icon: Users,           color: "#FF6B35", roles: ["admin","registrar"] },
   { href: "/gems",          label: "Supplies",  icon: Gem,             color: "#D97706", roles: ["admin","production"] },
-  { href: "/appliques",     label: "Appliques", icon: Sparkles,        color: "#7C3AED", roles: ["admin","production"] },
+  { href: "/appliques",     label: "Pieces",    icon: Sparkles,        color: "#7C3AED", roles: ["admin","production"] },
   { href: "/patterns",      label: "Patterns",  icon: Scissors,        color: "#00BCD4", roles: ["admin","production"] },
   { href: "/parent-shirts", label: "Shirts",    icon: Shirt,           color: "#059669", roles: ["admin","registrar"] },
   { href: "/reports",       label: "Reports",   icon: BarChart3,       color: "#1A73E8", roles: ["admin","registrar","production"] },

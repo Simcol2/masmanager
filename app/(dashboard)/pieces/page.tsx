@@ -932,6 +932,10 @@ function PieceCard({
         <p style={{ fontSize: "0.72rem", color: "#6B7280", lineHeight: 1.4, margin: 0 }}>
           {SIZE_GROUP_LABELS[piece.sizeGroup]}
         </p>
+        <button onClick={e => { e.stopPropagation(); onBuild(); }}
+          style={{ marginTop: "0.25rem", width: "100%", padding: "0.35rem", borderRadius: "0.5rem", border: "1.5px solid rgba(255,107,53,0.4)", background: "rgba(255,107,53,0.06)", color: "#FF6B35", fontWeight: 700, fontSize: "0.72rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3rem" }}>
+          <Hammer style={{ width: "0.7rem", height: "0.7rem" }} /> Build
+        </button>
       </div>
     </motion.div>
   );
