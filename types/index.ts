@@ -360,6 +360,31 @@ export const AppliqueUsageSchema = z.object({
 export type Applique = z.infer<typeof AppliqueSchema>;
 export type AppliqueUsage = z.infer<typeof AppliqueUsageSchema>;
 
+// ─── Piece Builder ────────────────────────────────────────────────────────────
+// Direct supply and applique assignments to a master piece (season-agnostic).
+// Cost traces back to GemSupply.unitCost (supplies) or Applique.totalCost (appliques).
+export const PieceIngredientSchema = z.object({
+  id: z.string(),
+  masterPieceId: z.string(),
+  pieceName: z.string(),
+  type: z.enum(["supply", "applique"]),
+  // supply fields
+  gemSupplyId: z.string().optional(),
+  gemSupplyName: z.string().optional(),
+  gemSupplyItemNumber: z.string().optional(),
+  // applique fields
+  appliqueId: z.string().optional(),
+  appliqueName: z.string().optional(),
+  appliqueItemNumber: z.string().optional(),
+  // cost fields (snapshotted at save time)
+  quantity: z.number().min(0).default(1),
+  unitCost: z.number().min(0).default(0),
+  lineCost: z.number().min(0).default(0),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+export type PieceIngredient = z.infer<typeof PieceIngredientSchema>;
+
 // ─── Costume Recipe ───────────────────────────────────────────────────────────
 export const CostumeMaterialSchema = z.object({
   inventoryItemId: z.string(),
