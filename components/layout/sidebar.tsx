@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth";
 import {
   LayoutDashboard, CalendarDays, Users, Package, Hammer,
   Shirt, BarChart3, Settings, LogOut, ChevronLeft, ChevronRight,
-  Sparkles, Gem,
+  Sparkles, Gem, Scissors,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -16,6 +16,7 @@ const navItems = [
   { href: "/registrations", label: "Registrations", icon: Users,           color: "#FF6B35", roles: ["admin","registrar"] },
   { href: "/gems",          label: "Supplies",      icon: Gem,             color: "#F59E0B", roles: ["admin","production"] },
   { href: "/appliques",     label: "Appliques",     icon: Sparkles,        color: "#8B5CF6", roles: ["admin","production"] },
+  { href: "/patterns",      label: "Patterns",      icon: Scissors,        color: "#00BCD4", roles: ["admin","production"] },
   { href: "/inventory",     label: "Inventory",     icon: Package,         color: "#0891B2", roles: ["admin","production"] },
   { href: "/production",    label: "Production",    icon: Hammer,          color: "#F97316", roles: ["admin","production"] },
   { href: "/parent-shirts", label: "Parent Shirts", icon: Shirt,           color: "#10B981", roles: ["admin","registrar"] },

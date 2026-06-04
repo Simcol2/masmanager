@@ -515,15 +515,18 @@ function getGemSupplyUnitCost(gem: GemSupply): number {
   return 0;
 }
 
-function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }: {
+function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique, masterPieces }: {
   open: boolean; onClose: () => void; onSaved: () => void;
-  gemSupplies: GemSupply[]; applique?: Applique;
+  gemSupplies: GemSupply[]; applique?: Applique; masterPieces: MasterPiece[];
 }) {
   const isEdit = !!applique;
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
   const [photoURL, setPhotoURL] = useState<string | undefined>();
   const [ingredients, setIngredients] = useState<AppliqueIngredient[]>([]);
+  const [pendingUsages, setPendingUsages] = useState<Omit<AppliqueUsage, "id" | "createdAt" | "updatedAt">[]>([]);
+  const [existingUsages, setExistingUsages] = useState<AppliqueUsage[]>([]);
+  const [removedUsageIds, setRemovedUsageIds] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [shapeFilter, setShapeFilter] = useState("all");
@@ -542,9 +545,12 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
     if (!open) return;
     setName(applique?.name ?? ""); setNotes(applique?.notes ?? "");
     setPhotoURL(applique?.photoURL); setIngredients(applique?.ingredients ?? []);
-    setSearch(""); setCatFilter("all"); setShapeFilter("all"); setError("");
+    setPendingUsages([]); setRemovedUsageIds([]); setError("");
     setMobileTab("gems");
-  }, [open, applique]);
+    if (isEdit && applique) {
+      getAppliqueUsagesByApplique(applique.id).then(setExistingUsages).catch(() => {});
+    } else { setExistingUsages([]); }
+  }, [open, applique, isEdit]);
 
   const filteredGems = gemSupplies.filter(g => {
     const matchCat = catFilter === "all" || g.category === catFilter;
@@ -597,11 +603,16 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
     setSaving(true); setError("");
     try {
       const payload = { name: name.trim(), notes: notes || undefined, photoURL, ingredients, totalCost };
-      if (isEdit && applique) await updateApplique(applique.id, payload);
-      else await createApplique(payload);
+      let savedId: string;
+      if (isEdit && applique) { await updateApplique(applique.id, payload); savedId = applique.id; }
+      else { const c = await createApplique(payload); savedId = c.id; }
+      await Promise.all([
+        ...removedUsageIds.map(id => deleteAppliqueUsage(id)),
+        ...pendingUsages.map(u => upsertAppliqueUsage({ ...u, appliqueId: savedId })),
+      ]);
       onSaved(); onClose();
-    } catch (error) {
-      console.error("Failed to save applique", error);
+    } catch (err) {
+      console.error("Failed to save applique", err);
       setError("Failed to save.");
     } finally { setSaving(false); }
   }
@@ -773,8 +784,26 @@ function ApliqueBuilderDialog({ open, onClose, onSaved, gemSupplies, applique }:
             </div>
 
             <div className="ab-right-mid">
+              {/* Piece assignment */}
+              <UsageSection
+                appliqueId={applique?.id ?? tempId.current}
+                appliqueName={name}
+                appliqueItemNumber={applique?.itemNumber ?? ""}
+                masterPieces={masterPieces}
+                existingUsages={existingUsages}
+                pendingUsages={pendingUsages}
+                removedIds={removedUsageIds}
+                onAddPending={u => setPendingUsages(prev => [...prev, u])}
+                onRemovePending={i => setPendingUsages(prev => prev.filter((_, idx) => idx !== i))}
+                onRemoveExisting={id => setRemovedUsageIds(prev => [...prev, id])}
+              />
+
+              {/* Ingredient list */}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginTop: "0.5rem", marginBottom: "0.25rem" }}>
+                <span style={{ fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#6B7280" }}>Gems in this applique</span>
+              </div>
               {ingredients.length === 0 ? (
-                <div style={{ textAlign: "center", paddingTop: "2rem", color: "#9CA3AF" }}>
+                <div style={{ textAlign: "center", padding: "1.5rem 0", color: "#9CA3AF" }}>
                   <Sparkles style={{ width: "1.5rem", height: "1.5rem", margin: "0 auto 0.35rem" }} />
                   <p style={{ fontSize: "0.78rem", margin: 0 }}>Go to Pick Gems tab to add gems</p>
                 </div>
@@ -927,7 +956,8 @@ export default function AppliquesPage() {
 
       {/* Visual builder for building appliques from gems */}
       <ApliqueBuilderDialog open={builderOpen} applique={builderApplique}
-        onClose={() => { setBuilderOpen(false); setBuilderApplique(undefined); }} onSaved={load} gemSupplies={gemSupplies} />
+        onClose={() => { setBuilderOpen(false); setBuilderApplique(undefined); }} onSaved={load}
+        gemSupplies={gemSupplies} masterPieces={masterPieces} />
       {/* Simple form for logging pre-purchased appliques */}
       <AppliqueFormDialog open={addOpen} onClose={() => setAddOpen(false)} onSaved={load} masterPieces={masterPieces} gemSupplies={gemSupplies} />
       <AppliqueFormDialog applique={editApplique} open={!!editApplique} onClose={() => setEditApplique(undefined)} onSaved={load} masterPieces={masterPieces} gemSupplies={gemSupplies} />
