@@ -404,7 +404,25 @@ type DraftIngredient = {
   gemSupplyId?: string; gemSupplyName?: string; gemSupplyItemNumber?: string;
   appliqueId?: string; appliqueName?: string; appliqueItemNumber?: string;
   quantity: number; unitCost: number; lineCost: number;
+  dimWidth?: number;   // inches
+  dimLength?: number;  // inches
 };
+
+const LINEAR_UNITS = new Set(["yard", "metre", "feet"]);
+
+function inchesToUnit(inches: number, unit: string): number {
+  if (unit === "yard") return +(inches / 36).toFixed(4);
+  if (unit === "metre") return +(inches / 39.3701).toFixed(4);
+  if (unit === "feet") return +(inches / 12).toFixed(4);
+  return inches;
+}
+
+function unitLabel(unit: string): string {
+  if (unit === "yard") return "yd";
+  if (unit === "metre") return "m";
+  if (unit === "feet") return "ft";
+  return unit;
+}
 
 const SUPPLY_CAT_LABELS: Record<string, string> = {
   rhinestone: "Rhinestone", gem: "Gem", trim: "Trim", fabric: "Fabric",
@@ -425,6 +443,8 @@ function PieceBuilderDialog({
   const [search, setSearch] = useState("");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [pendingQty, setPendingQty] = useState(1);
+  const [pendingWidth, setPendingWidth] = useState<string>("");
+  const [pendingLength, setPendingLength] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(true);
@@ -446,29 +466,30 @@ function PieceBuilderDialog({
   useEffect(() => {
     if (!open) return;
     setTab("supplies"); setCatFilter("all"); setSearch("");
-    setPendingId(null); setPendingQty(1); setRecipeOpen(true);
+    setPendingId(null); setPendingQty(1); setPendingWidth(""); setPendingLength("");
+    setRecipeOpen(true);
     load();
   }, [open, load]);
 
-  function addSupply(supply: GemSupply, qty: number) {
+  function addSupply(supply: GemSupply, qty: number, dimWidth?: number, dimLength?: number) {
     const unitCost = supply.costQty > 0 ? +(supply.costAmount / supply.costQty).toFixed(6) : 0;
     setIngredients(prev => {
       const idx = prev.findIndex(i => i.type === "supply" && i.gemSupplyId === supply.id);
+      const entry: DraftIngredient = {
+        type: "supply",
+        gemSupplyId: supply.id, gemSupplyName: supply.name, gemSupplyItemNumber: supply.itemNumber,
+        quantity: qty, unitCost, lineCost: +(unitCost * qty).toFixed(4),
+        ...(dimWidth !== undefined ? { dimWidth } : {}),
+        ...(dimLength !== undefined ? { dimLength } : {}),
+      };
       if (idx >= 0) {
         const updated = [...prev];
-        const q = updated[idx].quantity + qty;
-        updated[idx] = { ...updated[idx], quantity: q, lineCost: +(unitCost * q).toFixed(4) };
+        updated[idx] = entry;
         return updated;
       }
-      return [...prev, {
-        type: "supply",
-        gemSupplyId: supply.id,
-        gemSupplyName: supply.name,
-        gemSupplyItemNumber: supply.itemNumber,
-        quantity: qty, unitCost, lineCost: +(unitCost * qty).toFixed(4),
-      }];
+      return [...prev, entry];
     });
-    setPendingId(null); setPendingQty(1);
+    setPendingId(null); setPendingQty(1); setPendingWidth(""); setPendingLength("");
   }
 
   function addApplique(applique: Applique, qty: number) {
@@ -487,7 +508,7 @@ function PieceBuilderDialog({
         quantity: qty, unitCost, lineCost: +(unitCost * qty).toFixed(4),
       }];
     });
-    setPendingId(null); setPendingQty(1);
+    setPendingId(null); setPendingQty(1); setPendingWidth(""); setPendingLength("");
   }
 
   function updateQty(idx: number, qty: number) {
@@ -646,23 +667,60 @@ function PieceBuilderDialog({
                         </div>
                         {inRecipe && !isPending ? (
                           <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#059669", background: "rgba(5,150,105,0.1)", padding: "0.15rem 0.5rem", borderRadius: "999px", whiteSpace: "nowrap" }}>In recipe</span>
-                        ) : isPending ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                            <input type="number" min="0.001" step="1" value={pendingQty}
-                              onChange={e => setPendingQty(Math.max(0.001, parseFloat(e.target.value) || 1))}
-                              autoFocus
-                              style={{ width: "3.5rem", padding: "0.25rem 0.4rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.8rem", color: "#1E2029", background: "#FFFFFF", outline: "none" }} />
-                            <button onClick={() => addSupply(supply, pendingQty)}
-                              style={{ padding: "0.25rem 0.5rem", borderRadius: "0.4rem", border: "none", background: "#1A73E8", color: "#fff", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.2rem" }}>
-                              <Check style={{ width: "0.75rem", height: "0.75rem" }} />
-                            </button>
-                            <button onClick={() => { setPendingId(null); setPendingQty(1); }}
-                              style={{ padding: "0.25rem", borderRadius: "0.4rem", border: "1px solid #E5E7EB", background: "#fff", cursor: "pointer", color: "#9CA3AF" }}>
-                              <X style={{ width: "0.7rem", height: "0.7rem" }} />
-                            </button>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setPendingId(supply.id); setPendingQty(1); }}
+                        ) : isPending ? (() => {
+                          const isLinear = LINEAR_UNITS.has(supply.costUnit);
+                          const lenIn = parseFloat(pendingLength) || 0;
+                          const computedQty = isLinear && lenIn > 0 ? inchesToUnit(lenIn, supply.costUnit) : pendingQty;
+                          const canConfirm = isLinear ? lenIn > 0 : pendingQty > 0;
+                          return (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "flex-end" }}>
+                              {isLinear ? (
+                                <>
+                                  <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                    <input type="number" min="0" step="0.25" value={pendingWidth}
+                                      onChange={e => setPendingWidth(e.target.value)}
+                                      placeholder='W"'
+                                      style={{ width: "3.5rem", padding: "0.25rem 0.4rem", border: "1.5px solid #E5E7EB", borderRadius: "0.4rem", fontSize: "0.78rem", color: "#1E2029", background: "#FFFFFF", outline: "none", textAlign: "center" }} />
+                                    <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>×</span>
+                                    <input type="number" min="0" step="0.25" value={pendingLength}
+                                      onChange={e => setPendingLength(e.target.value)}
+                                      placeholder='L"'
+                                      autoFocus
+                                      style={{ width: "3.5rem", padding: "0.25rem 0.4rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.78rem", color: "#1E2029", background: "#FFFFFF", outline: "none", textAlign: "center" }} />
+                                    <span style={{ fontSize: "0.68rem", color: "#9CA3AF" }}>in</span>
+                                  </div>
+                                  {lenIn > 0 && (
+                                    <span style={{ fontSize: "0.68rem", color: "#1A73E8", fontWeight: 600 }}>
+                                      = {computedQty.toFixed(3)} {unitLabel(supply.costUnit)} · ${(unitCost * computedQty).toFixed(2)}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <input type="number" min="0.001" step="1" value={pendingQty}
+                                  onChange={e => setPendingQty(Math.max(0.001, parseFloat(e.target.value) || 1))}
+                                  autoFocus
+                                  style={{ width: "3.5rem", padding: "0.25rem 0.4rem", border: "1.5px solid #1A73E8", borderRadius: "0.4rem", fontSize: "0.8rem", color: "#1E2029", background: "#FFFFFF", outline: "none" }} />
+                              )}
+                              <div style={{ display: "flex", gap: "0.3rem" }}>
+                                <button
+                                  disabled={!canConfirm}
+                                  onClick={() => {
+                                    const w = parseFloat(pendingWidth) || undefined;
+                                    const l = parseFloat(pendingLength) || undefined;
+                                    addSupply(supply, isLinear ? computedQty : pendingQty, w, l);
+                                  }}
+                                  style={{ padding: "0.25rem 0.5rem", borderRadius: "0.4rem", border: "none", background: canConfirm ? "#1A73E8" : "#E5E7EB", color: canConfirm ? "#fff" : "#9CA3AF", fontWeight: 700, fontSize: "0.78rem", cursor: canConfirm ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "0.2rem" }}>
+                                  <Check style={{ width: "0.75rem", height: "0.75rem" }} />
+                                </button>
+                                <button onClick={() => { setPendingId(null); setPendingQty(1); setPendingWidth(""); setPendingLength(""); }}
+                                  style={{ padding: "0.25rem", borderRadius: "0.4rem", border: "1px solid #E5E7EB", background: "#fff", cursor: "pointer", color: "#9CA3AF" }}>
+                                  <X style={{ width: "0.7rem", height: "0.7rem" }} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })() : (
+                          <button onClick={() => { setPendingId(supply.id); setPendingQty(1); setPendingWidth(""); setPendingLength(""); }}
                             style={{ padding: "0.25rem 0.6rem", borderRadius: "0.4rem", border: "1.5px solid #E5E7EB", background: "#fff", color: "#374151", fontWeight: 600, fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.2rem" }}>
                             <Plus style={{ width: "0.7rem", height: "0.7rem" }} /> Add
                           </button>
@@ -753,9 +811,15 @@ function PieceBuilderDialog({
                             <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "#1E2029", margin: "0.15rem 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {ing.gemSupplyName ?? ing.appliqueName}
                             </p>
-                            <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: 0 }}>
-                              ${ing.unitCost.toFixed(4)}/ea
-                            </p>
+                            {ing.dimLength ? (
+                              <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: 0 }}>
+                                {ing.dimWidth ? `${ing.dimWidth}" × ` : ""}{ing.dimLength}" = {ing.quantity.toFixed(3)} {ing.gemSupplyId && gemSupplies.find(g => g.id === ing.gemSupplyId)?.costUnit ? unitLabel(gemSupplies.find(g => g.id === ing.gemSupplyId)!.costUnit) : "units"}
+                              </p>
+                            ) : (
+                              <p style={{ fontSize: "0.68rem", color: "#9CA3AF", margin: 0 }}>
+                                ${ing.unitCost.toFixed(4)}/ea
+                              </p>
+                            )}
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}>
                             <input type="number" min="0.001" step="1" value={ing.quantity}

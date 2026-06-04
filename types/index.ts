@@ -380,6 +380,8 @@ export const PieceIngredientSchema = z.object({
   quantity: z.number().min(0).default(1),
   unitCost: z.number().min(0).default(0),
   lineCost: z.number().min(0).default(0),
+  dimWidth: z.number().optional(),   // inches, for linear supplies (fabric, trim, elastic)
+  dimLength: z.number().optional(),  // inches, drives qty calculation for linear supplies
   createdAt: z.date(),
   updatedAt: z.date(),
 });
