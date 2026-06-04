@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check, Gem, Link2, ShoppingCart, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, ImageIcon, Loader2, X, Check, Gem, Link2, ShoppingCart, AlertCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -233,6 +233,11 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const tempId = useRef(`temp_${Date.now()}`);
+  // URL import
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
+  const [importedFields, setImportedFields] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -251,6 +256,9 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
     setNotes(gem?.notes ?? "");
     setPhotoURL(gem?.photoURL);
     setError("");
+    setImportUrl("");
+    setImportError("");
+    setImportedFields([]);
   }, [open, gem]);
 
   async function handlePhoto(file: File) {
@@ -262,6 +270,44 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
       setPhotoURL(await uploadFile(`gemSupplies/${id}/photo.${ext}`, file, setUploadPct));
     } catch { setError("Upload failed."); }
     finally { setUploading(false); }
+  }
+
+  async function handleImport(urlToImport?: string) {
+    const url = (urlToImport ?? importUrl).trim();
+    if (!url) return;
+    setImporting(true); setImportError(""); setImportedFields([]);
+    try {
+      const res = await fetch("/api/fetch-product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setImportError(data.error ?? "Could not import product info.");
+        return;
+      }
+      const filled: string[] = [];
+      if (data.name)       { setName(data.name);                                          filled.push("name"); }
+      if (data.category)   { setCategory(data.category as SupplyCategory);               filled.push("category"); }
+      if (data.shape)      { setShape(data.shape);                                        filled.push("shape"); }
+      if (data.costAmount) { setCostAmount(String(data.costAmount));                      filled.push("price"); }
+      if (data.costQty)    { setCostQty(String(data.costQty));                            filled.push("qty"); }
+      if (data.costUnit)   { setCostUnit(data.costUnit);                                  filled.push("unit"); }
+      if (data.minOrderQty){ setMinOrderQty(String(data.minOrderQty));                   filled.push("min order"); }
+      if (data.minOrderUnit){ setMinOrderUnit(data.minOrderUnit); }
+      if (data.supplier && DEFAULT_SUPPLIERS.includes(data.supplier)) {
+        setSupplier(data.supplier); setCustomSupplierMode(false);                         filled.push("supplier");
+      }
+      if (data.supplierLink){ setSupplierLink(data.supplierLink);                        filled.push("link"); }
+      if (data.imageUrl)   { setPhotoURL(data.imageUrl);                                  filled.push("photo"); }
+      setImportedFields(filled);
+      if (filled.length === 0) setImportError("Could not extract product info from that page. Fill in the fields manually.");
+    } catch {
+      setImportError("Failed to fetch product info. Check your connection and try again.");
+    } finally {
+      setImporting(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -328,6 +374,52 @@ function GemFormDialog({ gem, open, onClose, onSaved }: {
 
         <div style={{ overflowY: "auto", flex: 1, padding: "1.25rem 1.5rem" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+            {/* URL import — new items only */}
+            {!isEdit && (
+              <div style={{ background: "#F0F9FF", border: "1px solid #BAE6FD", borderRadius: "0.875rem", padding: "0.75rem 0.875rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.1rem" }}>
+                  <Sparkles style={{ width: "0.875rem", height: "0.875rem", color: "#0EA5E9", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0369A1" }}>Import from product link</span>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <input
+                    type="url"
+                    placeholder="Paste Alibaba, AliExpress, or any product URL"
+                    value={importUrl}
+                    onChange={e => { setImportUrl(e.target.value); setImportError(""); }}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleImport(); } }}
+                    style={{ flex: 1, padding: "0.5rem 0.75rem", borderRadius: "0.5rem", border: "1.5px solid #BAE6FD", background: "#FFFFFF", fontSize: "0.82rem", color: "#1E2029", outline: "none" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleImport()}
+                    disabled={importing || !importUrl.trim()}
+                    style={{ padding: "0.5rem 0.875rem", borderRadius: "0.5rem", border: "none", background: importing ? "#BAE6FD" : "#0EA5E9", color: "#fff", fontWeight: 700, fontSize: "0.82rem", cursor: importing || !importUrl.trim() ? "not-allowed" : "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.35rem", flexShrink: 0 }}
+                  >
+                    {importing
+                      ? <><Loader2 style={{ width: "0.8rem", height: "0.8rem" }} className="animate-spin" />Fetching</>
+                      : "Import"}
+                  </button>
+                </div>
+                {importError && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", padding: "0.4rem 0.6rem", background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "0.5rem" }}>
+                    <AlertCircle style={{ width: "0.8rem", height: "0.8rem", color: "#DC2626", flexShrink: 0, marginTop: "0.1rem" }} />
+                    <span style={{ fontSize: "0.75rem", color: "#DC2626" }}>{importError}</span>
+                  </div>
+                )}
+                {importedFields.length > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <Check style={{ width: "0.75rem", height: "0.75rem", color: "#059669", flexShrink: 0 }} />
+                    <span style={{ fontSize: "0.72rem", color: "#059669", fontWeight: 600 }}>Filled:</span>
+                    {importedFields.map(f => (
+                      <span key={f} style={{ fontSize: "0.68rem", background: "#DCFCE7", color: "#16A34A", padding: "0.1rem 0.45rem", borderRadius: "999px", fontWeight: 600 }}>{f}</span>
+                    ))}
+                    <span style={{ fontSize: "0.68rem", color: "#6B7280" }}>Review and adjust below.</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Photo + name/category */}
             <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
