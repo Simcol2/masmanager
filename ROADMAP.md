@@ -44,11 +44,12 @@ Cost, selling price, and profit per costume category, with configurable policies
 - [x] **Costing page** (`/costing`) + a settings popup for the policies above.
 
 ### Costing follow-ups
-- [ ] Feed sourcing into the Order List: `buy_finished` pieces become purchase
-      line items; `make` pieces drive fabric-yardage demand (× actual sizes).
-- [ ] Size-accurate fabric demand (use each registration's size, not the
-      per-type average) once sourcing feeds the order list.
-- [ ] Show costing on the dashboard (net profit tile).
+- [x] Feed sourcing into the Order List: `buy_finished` pieces become a "Finished
+      pieces to buy" section and are excluded from material demand; `make` pieces
+      drive fabric-yardage demand.
+- [x] Size-accurate fabric demand: fabric is summed from each registration's
+      actual size via the yardage guide, not a per-type average.
+- [x] Show costing on the dashboard (net profit tile).
 
 ## Tier 2 — Operational polish
 
