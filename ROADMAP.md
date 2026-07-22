@@ -67,9 +67,12 @@ Turns a short onboarding into a ready-to-post content plan.
 - [x] Added to sidebar and mobile nav.
 
 ### Social follow-ups
-- [ ] Optional AI-written captions (Anthropic API): swap `draftCaption` for a
-      server route; needs an API key in the environment. Templates stay as
-      fallback.
+- [ ] **AI-generated content (priority, replaces the templates).** The current
+      captions and post ideas are template based and read generic; the intended
+      direction is to generate them with AI (Anthropic API) from the brand
+      profile, so captions, post concepts, and even a suggested visual direction
+      feel specific to the section, not boilerplate. Needs a server route plus an
+      API key in the environment; keep templates only as an offline fallback.
 - [ ] Save/edit individual posts and mark them as posted.
 - [ ] Export the plan to CSV / a shareable calendar.
 
