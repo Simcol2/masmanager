@@ -4,20 +4,24 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Hammer, ChevronDown, ChevronUp, Loader2,
-  AlertTriangle, CheckCircle2, Circle, ListChecks,
+  AlertTriangle, CheckCircle2, Circle, ListChecks, Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import {
   type CostumeType, type Registration, type SeasonPieceStep,
-  CostumeTypeLabels,
 } from "@/types";
-import { getRegistrations } from "@/lib/services/registrations";
 import { getSeasonPieceSteps, updateStepStatus } from "@/lib/services/productionSteps";
+import {
+  loadProductionData, computeAppliqueNeeds,
+  type ProductionData, type AppliqueNeed,
+} from "@/lib/production-needs";
 
 const SEASON = "2026";
 
-// ── Piece-to-costume-type mapping ─────────────────────────────────────────────
-const COSTUME_PIECES: Record<CostumeType, string[]> = {
+// ── Fallback piece-to-costume-type mapping ────────────────────────────────────
+// Used only when a costume type has no SeasonPieceConfig set up yet. Once the
+// admin configures pieces in Seasons, that config takes over.
+const DEFAULT_COSTUME_PIECES: Record<CostumeType, string[]> = {
   girls_backline:        ["Arm Bands", "Thigh Bands", "Half Skirt", "Shorts", "Top", "Necklace", "Head Piece"],
   boys_backline:         ["Arm Bands", "Shorts", "Top", "Belt", "Chest Piece", "Head Piece"],
   toddler_frontline:     ["Arm Bands", "Thigh Bands", "Half Skirt", "Shorts", "Top", "Necklace", "Head Piece", "Collar"],
@@ -238,9 +242,52 @@ function PieceCard({
   );
 }
 
+// ── Appliques to make ─────────────────────────────────────────────────────────
+function AppliqueNeedsSection({ needs }: { needs: AppliqueNeed[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const totalUnits = needs.reduce((s, n) => s + n.totalUnits, 0);
+
+  return (
+    <div style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "0.875rem", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+      <div onClick={() => setExpanded(v => !v)} style={{ padding: "0.875rem 1rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.625rem" }}>
+        <div style={{ width: "1.75rem", height: "1.75rem", borderRadius: "0.5rem", background: "rgba(124,58,237,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <Sparkles style={{ width: "0.9rem", height: "0.9rem", color: "#7C3AED" }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ fontSize: "1rem", fontWeight: 700, color: "#1E2029" }}>Appliques to Make</span>
+          <div style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>{needs.length} designs</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+          <span style={{ fontSize: "1.25rem", fontWeight: 800, color: "#1E2029" }}>{Math.round(totalUnits).toLocaleString()}</span>
+          <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>total</span>
+        </div>
+        {expanded
+          ? <ChevronUp style={{ width: "1rem", height: "1rem", color: "#9CA3AF", flexShrink: 0 }} />
+          : <ChevronDown style={{ width: "1rem", height: "1rem", color: "#9CA3AF", flexShrink: 0 }} />}
+      </div>
+      {expanded && (
+        <div style={{ borderTop: "1px solid #F3F4F6" }}>
+          {needs.map(n => (
+            <div key={n.appliqueId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", padding: "0.7rem 1rem", borderBottom: "1px solid #F9FAFB" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "#374151", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.appliqueName}</div>
+                {n.itemNumber && <div style={{ fontSize: "0.68rem", color: "#9CA3AF" }}>{n.itemNumber}</div>}
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <span style={{ fontSize: "1rem", fontWeight: 800, color: "#7C3AED" }}>{Math.round(n.totalUnits).toLocaleString()}</span>
+                <span style={{ fontSize: "0.68rem", color: "#9CA3AF" }}> units</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function ProductionPage() {
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [data, setData] = useState<ProductionData | null>(null);
   const [allSteps, setAllSteps] = useState<SeasonPieceStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingStepId, setUpdatingStepId] = useState<string | null>(null);
@@ -248,16 +295,34 @@ export default function ProductionPage() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      getRegistrations(SEASON),
+      loadProductionData(SEASON),
       getSeasonPieceSteps(SEASON),
-    ]).then(([regs, steps]) => {
+    ]).then(([prod, steps]) => {
       if (cancelled) return;
-      setRegistrations(regs);
+      setData(prod);
       setAllSteps(steps);
     }).catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  const registrations: Registration[] = data?.registrations ?? [];
+  const configs = data?.configs ?? [];
+
+  // Which pieces apply to each costume type: prefer the season's config,
+  // fall back to defaults for any type not yet configured.
+  const costumePieces = {} as Record<CostumeType, string[]>;
+  for (const ct of Object.keys(DEFAULT_COSTUME_PIECES) as CostumeType[]) {
+    const configured = configs.filter(c => c.costumeType === ct).map(c => c.pieceName);
+    costumePieces[ct] = configured.length > 0
+      ? Array.from(new Set(configured))
+      : DEFAULT_COSTUME_PIECES[ct];
+  }
+
+  // Appliques to make = quantityPerCostume × registrations, per applique.
+  const appliqueNeeds: AppliqueNeed[] = data
+    ? computeAppliqueNeeds(data.usages, data.bodywearRecipes, data.appliques, data.registrations).needs
+    : [];
 
   const handleStatusChange = useCallback(async (stepId: string, status: StepStatus) => {
     setUpdatingStepId(stepId);
@@ -270,7 +335,7 @@ export default function ProductionPage() {
 
   // Build piece data from registrations
   const allPieceNames = new Set<string>();
-  for (const pieces of Object.values(COSTUME_PIECES)) {
+  for (const pieces of Object.values(costumePieces)) {
     for (const p of pieces) allPieceNames.add(p);
   }
   const sortedPieceNames = PIECE_ORDER.filter(p => allPieceNames.has(p));
@@ -280,7 +345,7 @@ export default function ProductionPage() {
 
   const pieces = sortedPieceNames.map(pieceName => {
     const tierData = TIERS.map(tier => {
-      const relevantTypes = tier.types.filter(ct => COSTUME_PIECES[ct].includes(pieceName));
+      const relevantTypes = tier.types.filter(ct => costumePieces[ct].includes(pieceName));
       if (relevantTypes.length === 0) return null;
       const tierRegs = registrations.filter(r => relevantTypes.includes(r.costumeType));
       if (tierRegs.length === 0) return null;
@@ -342,20 +407,24 @@ export default function ProductionPage() {
           <p style={{ fontSize: "0.875rem", color: "#9CA3AF", margin: 0 }}>No registrations for {SEASON} yet.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
-          {pieces.map((piece, i) => (
-            <motion.div key={piece.pieceName} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <PieceCard
-                pieceName={piece.pieceName}
-                grandTotal={piece.grandTotal}
-                tierData={piece.tierData}
-                pieceSteps={piece.pieceSteps}
-                onStatusChange={handleStatusChange}
-                updatingStepId={updatingStepId}
-              />
-            </motion.div>
-          ))}
-        </div>
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+            {pieces.map((piece, i) => (
+              <motion.div key={piece.pieceName} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                <PieceCard
+                  pieceName={piece.pieceName}
+                  grandTotal={piece.grandTotal}
+                  tierData={piece.tierData}
+                  pieceSteps={piece.pieceSteps}
+                  onStatusChange={handleStatusChange}
+                  updatingStepId={updatingStepId}
+                />
+              </motion.div>
+            ))}
+          </div>
+
+          {appliqueNeeds.length > 0 && <AppliqueNeedsSection needs={appliqueNeeds} />}
+        </>
       )}
     </div>
   );
