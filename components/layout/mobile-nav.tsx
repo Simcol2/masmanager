@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
-  LayoutDashboard, Users, Shirt, CalendarDays, Gem, Sparkles, ShoppingCart, DollarSign,
+  LayoutDashboard, Users, Shirt, CalendarDays, Gem, Sparkles, ShoppingCart, DollarSign, Megaphone,
 } from "lucide-react";
 
 // Kept lean for a phone bottom bar: only live, frequently used pages. Patterns
@@ -17,6 +17,7 @@ const mobileNavItems = [
   { href: "/appliques",     label: "Pieces",    icon: Sparkles,        color: "#7C3AED", roles: ["admin","production"] },
   { href: "/orders",        label: "Orders",    icon: ShoppingCart,    color: "#D97706", roles: ["admin","production"] },
   { href: "/costing",       label: "Costing",   icon: DollarSign,      color: "#059669", roles: ["admin"] },
+  { href: "/social",        label: "Social",    icon: Megaphone,       color: "#7C3AED", roles: ["admin","registrar"] },
   { href: "/parent-shirts", label: "Shirts",    icon: Shirt,           color: "#059669", roles: ["admin","registrar"] },
 ];
 

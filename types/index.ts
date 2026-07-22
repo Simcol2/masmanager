@@ -588,6 +588,100 @@ export type CostumePricing = z.infer<typeof CostumePricingSchema>;
 export type ModelPolicyType = z.infer<typeof ModelPolicyType>;
 export type AppSettings = z.infer<typeof AppSettingsSchema>;
 
+// ─── Social Media ───────────────────────────────────────────────────────────────
+// A per-season brand + strategy profile that drives the content planner. Captured
+// through a short onboarding wizard, then used to generate a posting schedule.
+
+export const SocialPlatform = z.enum([
+  "instagram", "facebook", "tiktok", "whatsapp", "twitter", "youtube",
+]);
+export const SocialGoal = z.enum([
+  "registrations", "promote_costumes", "grow_followers", "build_hype",
+  "band_launch", "showcase_models", "sell_shirts",
+]);
+export const PostingCadence = z.enum(["daily", "few_weekly", "weekly", "few_monthly"]);
+export const BrandTone = z.enum(["fun", "bold", "elegant", "cultural", "family", "hype"]);
+export const TargetAudience = z.enum([
+  "toddler_parents", "kids_parents", "teens", "young_adults", "whole_family",
+]);
+
+export const SocialColorSchema = z.object({
+  name: z.string(),
+  hex: z.string(),
+});
+export const SocialKeyDateSchema = z.object({
+  label: z.string(),
+  date: z.date(),
+});
+
+export const SocialProfileSchema = z.object({
+  id: z.string(),           // "2026" (one profile per season)
+  seasonId: z.string(),
+  // Brand basics
+  sectionName: z.string().min(1),
+  slogan: z.string().optional(),
+  description: z.string().optional(),
+  colors: z.array(SocialColorSchema).default([]),
+  // Strategy
+  goals: z.array(SocialGoal).default([]),
+  platforms: z.array(SocialPlatform).default([]),
+  cadence: PostingCadence.default("few_weekly"),
+  tones: z.array(BrandTone).default([]),
+  audiences: z.array(TargetAudience).default([]),
+  // Key dates
+  registrationOpen: z.date().optional(),
+  registrationClose: z.date().optional(),
+  bandLaunch: z.date().optional(),
+  carnivalDate: z.date().optional(),
+  customDates: z.array(SocialKeyDateSchema).default([]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export type SocialPlatform = z.infer<typeof SocialPlatform>;
+export type SocialGoal = z.infer<typeof SocialGoal>;
+export type PostingCadence = z.infer<typeof PostingCadence>;
+export type BrandTone = z.infer<typeof BrandTone>;
+export type TargetAudience = z.infer<typeof TargetAudience>;
+export type SocialColor = z.infer<typeof SocialColorSchema>;
+export type SocialKeyDate = z.infer<typeof SocialKeyDateSchema>;
+export type SocialProfile = z.infer<typeof SocialProfileSchema>;
+
+export const SocialPlatformLabels: Record<SocialPlatform, string> = {
+  instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok",
+  whatsapp: "WhatsApp", twitter: "X (Twitter)", youtube: "YouTube",
+};
+export const SocialGoalLabels: Record<SocialGoal, string> = {
+  registrations: "Get registrations",
+  promote_costumes: "Promote the costumes",
+  grow_followers: "Grow followers",
+  build_hype: "Build hype and awareness",
+  band_launch: "Drive to band launch",
+  showcase_models: "Showcase models",
+  sell_shirts: "Sell parent shirts",
+};
+export const PostingCadenceLabels: Record<PostingCadence, string> = {
+  daily: "Daily",
+  few_weekly: "A few times a week",
+  weekly: "Weekly",
+  few_monthly: "A few times a month",
+};
+export const BrandToneLabels: Record<BrandTone, string> = {
+  fun: "Fun and playful",
+  bold: "Bold and vibrant",
+  elegant: "Elegant and luxe",
+  cultural: "Cultural and authentic",
+  family: "Family friendly",
+  hype: "High energy hype",
+};
+export const TargetAudienceLabels: Record<TargetAudience, string> = {
+  toddler_parents: "Parents of toddlers",
+  kids_parents: "Parents of kids",
+  teens: "Teens",
+  young_adults: "Young adults",
+  whole_family: "Whole family",
+};
+
 // Dashboard Metrics
 export const DashboardMetricsSchema = z.object({
   totalRegistrations: z.number(),
