@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Users, Package, Shirt, ArrowRight, Plus, Library, Sparkles, Gem, CalendarDays, TrendingUp, Hammer } from "lucide-react";
+import { Users, Package, Shirt, ArrowRight, Plus, Library, Sparkles, Gem, CalendarDays, TrendingUp, Hammer, DollarSign } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { getRegistrations } from "@/lib/services/registrations";
 import { getParentShirts, seedParentShirts } from "@/lib/services/parent-shirts";
 import { getSeasonPieceSteps } from "@/lib/services/productionSteps";
+import { loadProductionData } from "@/lib/production-needs";
+import { computeCostumeEconomics, summarizeEconomics } from "@/lib/costing";
+import { getPieceSourcings, getCostumePricings, getAppSettings } from "@/lib/services/costing";
 import { type CostumeType, CostumeTypeLabels, type SeasonPieceStep } from "@/types";
 
 const COSTUME_ORDER: CostumeType[] = [
@@ -34,6 +37,7 @@ export default function DashboardPage() {
   const [registrations, setRegistrations] = useState<Awaited<ReturnType<typeof getRegistrations>>>([]);
   const [shirtOrders, setShirtOrders] = useState<Awaited<ReturnType<typeof getParentShirts>>>([]);
   const [buildSteps, setBuildSteps] = useState<SeasonPieceStep[]>([]);
+  const [netProfit, setNetProfit] = useState<number | null>(null);
 
   useEffect(() => {
     getRegistrations("2026").then(setRegistrations).catch(console.error);
@@ -42,7 +46,18 @@ export default function DashboardPage() {
       .then(setShirtOrders)
       .catch(console.error);
     getSeasonPieceSteps("2026").then(setBuildSteps).catch(console.error);
+    Promise.all([
+      loadProductionData("2026"),
+      getPieceSourcings("2026"),
+      getCostumePricings("2026"),
+      getAppSettings(),
+    ]).then(([data, sourcings, pricings, settings]) => {
+      const eco = computeCostumeEconomics(data, sourcings, pricings, settings);
+      setNetProfit(summarizeEconomics(eco).netProfit);
+    }).catch(console.error);
   }, []);
+
+  const money = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
   const total = registrations.length;
   const regsByType = COSTUME_ORDER.map(type => ({
@@ -54,7 +69,7 @@ export default function DashboardPage() {
   const STAT_CARDS = [
     { title: "Registrations", value: total, href: "/registrations", icon: Users,    bg: "#FF006E", light: "rgba(255,0,110,0.1)" },
     { title: "Shirt Orders",  value: shirtOrders.reduce((s, o) => s + o.quantity, 0), href: "/parent-shirts", icon: Shirt, bg: "#00BCD4", light: "rgba(0,188,212,0.1)" },
-    { title: "Costume Pieces",value: "—",   href: "/pieces",        icon: Library,  bg: "#FFD60A", light: "rgba(255,214,10,0.12)" },
+    { title: "Net Profit",    value: netProfit === null ? "—" : money(netProfit), href: "/costing", icon: DollarSign, bg: "#10B981", light: "rgba(16,185,129,0.12)" },
     { title: "Appliques",     value: "—",   href: "/appliques",     icon: Sparkles, bg: "#673AB7", light: "rgba(103,58,183,0.1)" },
   ];
 

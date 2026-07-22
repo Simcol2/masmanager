@@ -25,6 +25,32 @@ The modeling was already in place; these turn it into the daily-driver answers.
 
 ---
 
+## Costume Costing & Profit (DONE)
+
+Cost, selling price, and profit per costume category, with configurable policies.
+
+- [x] **Yardage guide baked in** (`lib/yardage.ts`) from the Master Size Chart &
+      Spandex Yardage Guide: auto-estimates fabric per made piece by size,
+      editable.
+- [x] **Per-piece sourcing** (`PieceSourcing`): each piece is independently either
+      **bought finished** (enter price) or **made** (fabric yardage × $/yd +
+      labor; labor 0 = sewn in-house). Pieces sum to a full costume.
+- [x] **Selling price per costume type** (`CostumePricing`) with cost, profit, and
+      margin per costume, plus season net revenue / cost / profit totals.
+- [x] **Configurable model policy** (`AppSettings`): "$150 discount" (any amount)
+      or "fully free", applied to the profit math with a model give-away figure.
+- [x] **Configurable make-cost method**: include gems/appliques in a made piece's
+      cost, or count fabric + labor only.
+- [x] **Costing page** (`/costing`) + a settings popup for the policies above.
+
+### Costing follow-ups
+- [x] Feed sourcing into the Order List: `buy_finished` pieces become a "Finished
+      pieces to buy" section and are excluded from material demand; `make` pieces
+      drive fabric-yardage demand.
+- [x] Size-accurate fabric demand: fabric is summed from each registration's
+      actual size via the yardage guide, not a per-type average.
+- [x] Show costing on the dashboard (net profit tile).
+
 ## Tier 2 — Operational polish
 
 Make the season easier to run day to day.

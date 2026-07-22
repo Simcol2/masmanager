@@ -4,11 +4,14 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ShoppingCart, Loader2, ChevronDown, ChevronUp, ExternalLink,
-  PackageCheck, AlertTriangle,
+  PackageCheck, AlertTriangle, ShoppingBag,
 } from "lucide-react";
 import {
-  loadProductionData, computeSupplyDemand, type SupplyDemand,
+  loadProductionData, computeOrderPlan,
+  type SupplyDemand, type FinishedPurchaseRow,
 } from "@/lib/production-needs";
+import { getPieceSourcings } from "@/lib/services/costing";
+import { CostumeTypeLabels } from "@/types";
 
 const SEASON = "2026";
 
@@ -125,14 +128,20 @@ function Stat({ label, value, accent }: { label: string; value: string; accent?:
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function OrdersPage() {
   const [rows, setRows] = useState<SupplyDemand[]>([]);
+  const [finished, setFinished] = useState<FinishedPurchaseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [onlyToOrder, setOnlyToOrder] = useState(true);
   const [category, setCategory] = useState("all");
 
   useEffect(() => {
     let cancelled = false;
-    loadProductionData(SEASON)
-      .then(data => { if (!cancelled) setRows(computeSupplyDemand(data)); })
+    Promise.all([loadProductionData(SEASON), getPieceSourcings(SEASON)])
+      .then(([data, sourcings]) => {
+        if (cancelled) return;
+        const plan = computeOrderPlan(data, sourcings);
+        setRows(plan.supplies);
+        setFinished(plan.finishedPurchases);
+      })
       .catch(console.error)
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -231,8 +240,41 @@ export default function OrdersPage() {
               ))}
             </div>
           )}
+
+          {/* Finished pieces to buy (sourced as "buy finished") */}
+          {finished.length > 0 && <FinishedSection rows={finished} />}
         </>
       )}
+    </div>
+  );
+}
+
+// ── Finished pieces to buy ─────────────────────────────────────────────────────
+function FinishedSection({ rows }: { rows: FinishedPurchaseRow[] }) {
+  const total = rows.reduce((s, r) => s + r.total, 0);
+  const units = rows.reduce((s, r) => s + r.count, 0);
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.5rem 0 0.75rem" }}>
+        <ShoppingBag style={{ width: "1rem", height: "1rem", color: "#1A73E8" }} />
+        <h2 style={{ fontSize: "0.85rem", fontWeight: 700, color: "#374151", margin: 0 }}>
+          Finished pieces to buy
+        </h2>
+        <span style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>{units} pieces · {money(total)}</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", borderRadius: "0.75rem", padding: "0.75rem 1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.75rem", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#1E2029" }}>{r.pieceName}</div>
+              <div style={{ fontSize: "0.72rem", color: "#9CA3AF" }}>
+                {CostumeTypeLabels[r.costumeType]} · {r.count} × {money(r.unitPrice)}
+              </div>
+            </div>
+            <span style={{ fontSize: "1rem", fontWeight: 800, color: "#1A73E8", flexShrink: 0 }}>{money(r.total)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

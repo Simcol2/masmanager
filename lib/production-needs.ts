@@ -22,6 +22,7 @@ import type {
   GemSupply,
   MasterPiece,
   CostumeType,
+  PieceSourcing,
 } from "@/types";
 
 import { getRegistrations } from "@/lib/services/registrations";
@@ -30,6 +31,7 @@ import { getPieceIngredients } from "@/lib/services/pieceIngredients";
 import { getAppliques, getAppliqueUsages } from "@/lib/services/appliques";
 import { getBodywearRecipes } from "@/lib/services/bodywearRecipes";
 import { getGemSupplies } from "@/lib/services/gems";
+import { yardageFor, fabricPieceType } from "@/lib/yardage";
 
 // ── Rounding helper ────────────────────────────────────────────────────────────
 function round(n: number, dp = 2): number {
@@ -87,6 +89,27 @@ export interface SupplyDemand {
   supplier?: string;
   supplierLink?: string;
   sources: DemandSource[];
+}
+
+export interface FinishedPurchaseRow {
+  pieceName: string;
+  costumeType: CostumeType;
+  count: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface OrderPlan {
+  supplies: SupplyDemand[];
+  finishedPurchases: FinishedPurchaseRow[];
+}
+
+// Which registration size field feeds a piece's fabric yardage.
+function regSizeForPiece(pieceName: string, reg: Registration): string | undefined {
+  const t = fabricPieceType(pieceName);
+  if (t === "bottom") return reg.bottomSize;
+  if (t === "top") return reg.topSize || reg.girlsTopSize;
+  return undefined;
 }
 
 // ── Registration counts by costume type ─────────────────────────────────────────
@@ -191,26 +214,36 @@ export function computeAppliqueNeeds(
   return { unitsByApplique, needs };
 }
 
-// ── Supply / fabric demand → order list ──────────────────────────────────────────
-// Three demand sources, summed per gem supply:
-//   1. supplies used directly on a piece (PieceIngredient) × pieces of that type
-//   2. gems inside an applique × appliques to make (from computeAppliqueNeeds)
-//   3. the bodywear item itself and its direct supply ingredients × registrations
+// ── Order plan: supplies to make + finished pieces to buy ─────────────────────────
+// Honors per-piece sourcing:
+//   • buy_finished → a finished-purchase row; its fabric, supplies, and appliques
+//     are NOT ordered (you buy it complete).
+//   • make → fabric demand from the chosen fabric × per-registration yardage
+//     (size-accurate); plus its supplies and appliques as normal.
+// Supplies with no sourcing fall back to the piece recipe (fabric included), so
+// nothing is lost before sourcing is set up.
 
-export function computeSupplyDemand(data: ProductionData): SupplyDemand[] {
+export function computeOrderPlan(
+  data: ProductionData,
+  sourcings: PieceSourcing[] = [],
+): OrderPlan {
   const {
     registrations, configs, pieceIngredients, appliques, usages, bodywearRecipes, supplies,
   } = data;
 
   const counts = regCountsByType(registrations);
   const supplyById = new Map(supplies.map((s) => [s.id, s]));
+  const sourcingByKey = new Map(sourcings.map((s) => [`${s.costumeType}::${s.masterPieceId}`, s]));
+  const outsourced = new Set<string>(); // `${costumeType}::${masterPieceId}` bought finished
+  const finishedPurchases: FinishedPurchaseRow[] = [];
 
-  // How many of each master piece are made this season (regs across every
-  // costume type whose config includes that piece).
-  const piecesMadeByMaster = new Map<string, number>();
-  for (const cfg of configs) {
-    const n = counts[cfg.costumeType] ?? 0;
-    piecesMadeByMaster.set(cfg.masterPieceId, (piecesMadeByMaster.get(cfg.masterPieceId) ?? 0) + n);
+  // Fabric-category piece ingredients, kept for the fallback when no sourcing is set.
+  const fabricIngredientsByMaster = new Map<string, PieceIngredient[]>();
+  for (const ing of pieceIngredients) {
+    if (ing.type !== "supply" || !ing.gemSupplyId) continue;
+    if (supplyById.get(ing.gemSupplyId)?.category !== "fabric") continue;
+    if (!fabricIngredientsByMaster.has(ing.masterPieceId)) fabricIngredientsByMaster.set(ing.masterPieceId, []);
+    fabricIngredientsByMaster.get(ing.masterPieceId)!.push(ing);
   }
 
   // Accumulator: supplyId → { demand, sources }
@@ -223,16 +256,61 @@ export function computeSupplyDemand(data: ProductionData): SupplyDemand[] {
     entry.sources.set(sourceLabel, (entry.sources.get(sourceLabel) ?? 0) + qty);
   }
 
-  // 1. Direct piece supplies
+  // Fabric + finished purchases, per configured piece per costume type
+  for (const cfg of configs) {
+    const key = `${cfg.costumeType}::${cfg.masterPieceId}`;
+    const src = sourcingByKey.get(key);
+    const count = counts[cfg.costumeType] ?? 0;
+
+    if (src?.mode === "buy_finished") {
+      outsourced.add(key);
+      if (count > 0) {
+        finishedPurchases.push({
+          pieceName: cfg.pieceName,
+          costumeType: cfg.costumeType,
+          count,
+          unitPrice: src.finishedPrice,
+          total: round(count * src.finishedPrice),
+        });
+      }
+      continue;
+    }
+    if (count === 0) continue;
+
+    if (src?.mode === "make" && src.fabricSupplyId) {
+      // Size-accurate: sum the yardage for each registered dancer's actual size
+      const regs = registrations.filter((r) => r.costumeType === cfg.costumeType);
+      let yards = 0;
+      for (const r of regs) yards += yardageFor(cfg.pieceName, regSizeForPiece(cfg.pieceName, r));
+      addDemand(src.fabricSupplyId, yards, `Fabric: ${cfg.pieceName}`);
+    } else {
+      // No sourcing fabric: fall back to the piece recipe's fabric ingredients
+      for (const ing of fabricIngredientsByMaster.get(cfg.masterPieceId) ?? []) {
+        addDemand(ing.gemSupplyId, ing.quantity * count, cfg.pieceName);
+      }
+    }
+  }
+
+  // How many of each master piece are actually made (skip outsourced types).
+  const piecesMadeByMaster = new Map<string, number>();
+  for (const cfg of configs) {
+    if (outsourced.has(`${cfg.costumeType}::${cfg.masterPieceId}`)) continue;
+    const n = counts[cfg.costumeType] ?? 0;
+    piecesMadeByMaster.set(cfg.masterPieceId, (piecesMadeByMaster.get(cfg.masterPieceId) ?? 0) + n);
+  }
+
+  // Non-fabric piece supplies × pieces made
   for (const ing of pieceIngredients) {
     if (ing.type !== "supply" || !ing.gemSupplyId) continue;
+    if (supplyById.get(ing.gemSupplyId)?.category === "fabric") continue; // handled above
     const made = piecesMadeByMaster.get(ing.masterPieceId) ?? 0;
     addDemand(ing.gemSupplyId, ing.quantity * made, ing.pieceName);
   }
 
-  // 2. Gems consumed by appliques we need to make
-  const { unitsByApplique } = computeAppliqueNeeds(usages, bodywearRecipes, appliques, registrations);
+  // Gems consumed by appliques we need to make (excluding outsourced pieces)
   const appliqueById = new Map(appliques.map((a) => [a.id, a]));
+  const usagesToMake = usages.filter((u) => !outsourced.has(`${u.costumeType}::${u.masterPieceId}`));
+  const { unitsByApplique } = computeAppliqueNeeds(usagesToMake, bodywearRecipes, appliques, registrations);
   for (const [appliqueId, units] of unitsByApplique) {
     const applique = appliqueById.get(appliqueId);
     if (!applique) continue;
@@ -241,7 +319,7 @@ export function computeSupplyDemand(data: ProductionData): SupplyDemand[] {
     }
   }
 
-  // 3. Bodywear item itself + its direct supply ingredients
+  // Bodywear item itself + its direct supply ingredients
   for (const recipe of bodywearRecipes) {
     const n = counts[recipe.costumeType] ?? 0;
     if (n === 0) continue;
@@ -291,7 +369,14 @@ export function computeSupplyDemand(data: ProductionData): SupplyDemand[] {
     });
   }
   rows.sort((a, b) => b.shortfall - a.shortfall || a.name.localeCompare(b.name));
-  return rows;
+
+  finishedPurchases.sort((a, b) => b.total - a.total);
+  return { supplies: rows, finishedPurchases };
+}
+
+// Backwards-compatible helper: just the supply rows, no sourcing applied.
+export function computeSupplyDemand(data: ProductionData): SupplyDemand[] {
+  return computeOrderPlan(data).supplies;
 }
 
 // ── Data loader ──────────────────────────────────────────────────────────────────
