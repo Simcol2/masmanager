@@ -51,6 +51,28 @@ Cost, selling price, and profit per costume category, with configurable policies
       actual size via the yardage guide, not a per-type average.
 - [x] Show costing on the dashboard (net profit tile).
 
+## Social Media Planner (DONE)
+
+Turns a short onboarding into a ready-to-post content plan.
+
+- [x] **Onboarding wizard** (`/social`, pops on first open): section name, colors +
+      codes, slogan, description, then strategy (goals, platforms, cadence, tone,
+      audience) and key dates (registration open/close, band launch, carnival,
+      custom dates).
+- [x] **Brand profile** stored per season (`SocialProfile`), editable anytime.
+- [x] **Content plan generator** (`lib/social-plan.ts`): builds a dated posting
+      schedule with tone-aware draft captions, hashtags, and platform hints
+      (section intro, registration open/close, costume reveals, model showcase,
+      shirts, countdowns, band launch), each with copy-to-clipboard.
+- [x] Added to sidebar and mobile nav.
+
+### Social follow-ups
+- [ ] Optional AI-written captions (Anthropic API): swap `draftCaption` for a
+      server route; needs an API key in the environment. Templates stay as
+      fallback.
+- [ ] Save/edit individual posts and mark them as posted.
+- [ ] Export the plan to CSV / a shareable calendar.
+
 ## Tier 2 — Operational polish
 
 Make the season easier to run day to day.
