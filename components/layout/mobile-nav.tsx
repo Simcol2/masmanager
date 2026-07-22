@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import {
-  LayoutDashboard, Users, Shirt, BarChart3, CalendarDays, Gem, Sparkles, Scissors, ShoppingCart,
+  LayoutDashboard, Users, Shirt, BarChart3, CalendarDays, Gem, Sparkles, Scissors, ShoppingCart, DollarSign,
 } from "lucide-react";
 
 const mobileNavItems = [
@@ -14,6 +14,7 @@ const mobileNavItems = [
   { href: "/gems",          label: "Supplies",  icon: Gem,             color: "#D97706", roles: ["admin","production"] },
   { href: "/appliques",     label: "Pieces",    icon: Sparkles,        color: "#7C3AED", roles: ["admin","production"] },
   { href: "/orders",        label: "Orders",    icon: ShoppingCart,    color: "#D97706", roles: ["admin","production"] },
+  { href: "/costing",       label: "Costing",   icon: DollarSign,      color: "#059669", roles: ["admin"] },
   { href: "/patterns",      label: "Patterns",  icon: Scissors,        color: "#00BCD4", roles: ["admin","production"] },
   { href: "/parent-shirts", label: "Shirts",    icon: Shirt,           color: "#059669", roles: ["admin","registrar"] },
   { href: "/reports",       label: "Reports",   icon: BarChart3,       color: "#1A73E8", roles: ["admin","registrar","production"] },

@@ -525,6 +525,69 @@ export const ProductionTaskSchema = z.object({
   updatedAt: z.date(),
 });
 
+// ─── Costume Costing ────────────────────────────────────────────────────────────
+// Per-piece sourcing (buy finished vs make), selling price per costume type, and
+// the band's configurable model/calc policies. Cost still traces back to GemSupply
+// unit costs (fabric) and the applique/supply recipes.
+
+// How a single piece is obtained for a costume type this season.
+export const PieceSourcingMode = z.enum([
+  "buy_finished", // bought already made — a single purchase price
+  "make",         // fabric + labor (labor 0 = sewn in-house)
+]);
+
+export const PieceSourcingSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  costumeType: CostumeType,
+  masterPieceId: z.string(),
+  pieceName: z.string(),          // denormalised for display
+  mode: PieceSourcingMode.default("make"),
+  // buy_finished
+  finishedPrice: z.number().min(0).default(0),
+  // make
+  fabricSupplyId: z.string().optional(),   // a GemSupply of category "fabric"
+  fabricSupplyName: z.string().optional(),
+  fabricYardage: z.number().min(0).default(0),   // auto-seeded from the yardage guide, editable
+  fabricUnitCost: z.number().min(0).default(0),  // $/yard snapshot at save time
+  laborCost: z.number().min(0).default(0),       // charge to have it made (0 if self-sewn)
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Selling price for a whole costume of a given type, this season.
+export const CostumePricingSchema = z.object({
+  id: z.string(),
+  seasonId: z.string(),
+  costumeType: CostumeType,
+  sellingPrice: z.number().min(0).default(0),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+// Band-wide policies the user chooses (single "global" document).
+export const ModelPolicyType = z.enum([
+  "discount",     // models pay full price minus a fixed discount
+  "free_costume", // models pay nothing
+]);
+
+export const AppSettingsSchema = z.object({
+  id: z.string(), // always "global"
+  modelPolicyType: ModelPolicyType.default("discount"),
+  modelDiscountAmount: z.number().min(0).default(150),
+  // When making a piece, include its gems/appliques in the cost, or just fabric+labor?
+  includeEmbellishmentsInPieceCost: z.boolean().default(true),
+  // Fallback $/yard when a fabric supply has no unit cost yet.
+  defaultFabricPricePerYard: z.number().min(0).default(0),
+  updatedAt: z.date(),
+});
+
+export type PieceSourcingMode = z.infer<typeof PieceSourcingMode>;
+export type PieceSourcing = z.infer<typeof PieceSourcingSchema>;
+export type CostumePricing = z.infer<typeof CostumePricingSchema>;
+export type ModelPolicyType = z.infer<typeof ModelPolicyType>;
+export type AppSettings = z.infer<typeof AppSettingsSchema>;
+
 // Dashboard Metrics
 export const DashboardMetricsSchema = z.object({
   totalRegistrations: z.number(),
